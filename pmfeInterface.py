@@ -1,7 +1,7 @@
 import subprocess
 # from os import path
 import os
-from fractions import Fraction
+from sympy import Rational
 
 class pmfeInterface:
     #Initialize with b and d!!!
@@ -20,7 +20,7 @@ class pmfeInterface:
         # print(command)
 
         pmfe = subprocess.run(command, capture_output=True, text=True).stdout.split()
-        x, y, z, w = Fraction(pmfe[1]), Fraction(pmfe[2]), Fraction(pmfe[3]), Fraction(pmfe[4])
+        x, y, z, w = Rational(pmfe[1]), Rational(pmfe[2]), Rational(pmfe[3]), Rational(pmfe[4])
 
         # print(x,y,z,w)
         #HANDLE ERRORS
@@ -36,7 +36,7 @@ class pmfeInterface:
         os.chdir(self.pmfePath)
         command = f"./pmfe-subopt -a {a} -b {b} -c {c} -d {d} -o out.tmp {self.filePath}".split()
         
-        subprocess.run(command, text=True)
+        subprocess.run(command) # text=True)
         #HANDLE ERRORS
         #
         #
@@ -45,7 +45,7 @@ class pmfeInterface:
         with open("out.tmp", "r") as out:
             for line in out.readlines()[4:]:
                 line = line.split()                
-                x,y,z,w = Fraction(line[2]), Fraction(line[3]), Fraction(line[4]), Fraction(line[5])
+                x,y,z,w = Rational(line[2]), Rational(line[3]), Rational(line[4]), Rational(line[5])
                 suboptScores.append((x,y,z,w))
             # print(out.readlines());
 
