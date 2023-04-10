@@ -2,6 +2,8 @@
 from sympy import Point, Line
 # import numpy as np
 
+# from 
+
 from pmfeInterface import pmfeInterface
 
 
@@ -10,23 +12,24 @@ class tippingPoint():
         self.point = point
         self.score1 = score1
         self.score2 = score2
-        self.a = point[0]
-        self.c = point[1]
+        self.a, self.c = point
         self.b = bVal
         self.d = dVal
-        self.delta_x = score1[0] - score2[0]
-        self.delta_z = -(score1[2] - score2[2])
+        self.delta_x = score1[2] - score2[2]
+        self.delta_z = -(score1[0] - score2[0])
 
         self.aB = 50
         self.cB = 50
 
-        print("X AND Z", self.delta_x, self.delta_z)
-
         self.nntm = interface
 
+        # print(self)
+        
+
     def findEndpoint(self, step):
+        print("POINT", self.point)
         nextPoint = self.iteratePoint(step)
-        print("POINT", nextPoint.point)
+        print("NEXT POINT", nextPoint.point)
 
         newScores = self.nntm.call_subopt(nextPoint.a, nextPoint.b, nextPoint.c, nextPoint.d)
         print("SCORES", newScores)
@@ -34,13 +37,14 @@ class tippingPoint():
         while(self.score1 in newScores and self.score2 in newScores):
             print("POINT", nextPoint.point)
             print("SCORES", newScores)
-            nextPoint = self.iteratePoint(step)
-            newScores = self.nntm.call_subopt(nextPoint.a, nextPoint.b, nextPoint.c, nextPoint.d)
+            nextPoint = nextPoint.iteratePoint(step)
+            newScores = nextPoint.nntm.call_subopt(nextPoint.a, nextPoint.b, nextPoint.c, nextPoint.d)
         
         endpoint, scores = self.getEndpoint(self.point, nextPoint.point, self.score1, newScores[0])
 
-        print(scores)
+        print("SCORES, unsorted", scores)
         scores.sort(key = lambda s: (s[0], s[2]))
+        print("SCORES, sorted", scores)
         newPoints = []
         for i, s in enumerate(scores):
             newPoints.append(tippingPoint(self.nntm, self.b, self.d, endpoint, s, scores[i+1]))
@@ -49,26 +53,25 @@ class tippingPoint():
 
 
     def getEndpoint(self, p1, p2, s1, s2):
-        intersection, endpoints = self.findIntersection(p1, p2, s1, s2)
-        intersectionVal = (intersection, endpoints)
-        # print("INTERSECTION", intersection)
+        intersection, _ = self.findIntersection(p1, p2, s1, s2)
+        print("INTERSECTION", intersection)
         if intersection == None:
             print("INTERSECTION NONE ERROR")
         # if findIntersection(p1, p2, s1, s2) == []:
         #     return []
-        scores = self.nntm.vertex_oracle(intersection[0], self.b, intersection[1], self.d)
+        scores = [*set(self.nntm.vertex_oracle(intersection[0], self.b, intersection[1], self.d))]
         # print("SCORES", scores)
 
         if s1 in scores and s2 in scores: 
-            return (intersectionVal, scores)
+            return (intersection, scores)
         
-        return self.findIntersections(p1, intersection, scores[0], s2)
+        return self.getEndpoint(p1, intersection, s1, scores[0])
     
     def findIntersection(self, p1, p2, s1, s2):
         paramLine = Line(p1, p2)
 
-        # print ("S1 S2:", s1, s2)
-        # print("P1 P2:", p1, p2)
+        print ("S1 S2:", s1, s2)
+        print("P1 P2:", p1, p2)
         x1, y1, z1, w1 = s1
         x2, y2, z2, w2 = s2
         
@@ -111,3 +114,6 @@ class tippingPoint():
             self.score1,
             self.score2
         )
+
+    def __repr__(self) -> str:
+        return f"TippingPoint({self.point}, {self.score1}, {self.score2})"

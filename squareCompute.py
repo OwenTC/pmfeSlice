@@ -1,11 +1,24 @@
-from fanSlice import fanSlice
+def computeSquare(FS, size = 50, step = 1):
+    points = []
+    # Static Computation
+    for i in range(step, size, step):
+        print("Iteration:", i)
+        FS.build(i, i)
+        points.extend(FS.searched.items())
+
+    scores = {}
+    for p, s in points:
+        if s in scores.keys():
+            scores[s].append(p)
+        else:
+            scores[s] = [p]
+
+    return scores
+
+# with open(args.output, 'w') as f:
+#     f.write("score, points\n")
+#     for s in scores.keys():
+#         f.write(f"{s}, {scores[s]}\n")
 
 
-points = []
-for i in range(1, 50):
-    print(i, "!!!!!!!!!!!!!!!!!THIS IS i!!!!!!!!!!!!!!!!!!!!!!!!!:", i)
-    s = fanSlice(i, i)
-    s.build()
-    points.extend(s.searched.keys())
-
-print(points)
+# print(*[str(p[0])[7:] for p in points], sep=",")

@@ -1,7 +1,7 @@
 import subprocess
 # from os import path
 import os
-from sympy import Rational
+from sympy import Point, Line
 
 class pmfeInterface:
     #Initialize with b and d!!!
@@ -9,7 +9,14 @@ class pmfeInterface:
         self.pmfePath = pmfePath
         self.filePath = filePath
 
-    def vertex_oracle(self, a, b, c, d):
+    def vertex_oracle(self, a, b, c, d, transform = True):
+        # if transform:
+        #     a = a+3*c
+        #     return self.transform_z(self.call_pmfe(a,b,c,d))
+        # else:
+        return self.call_pmfe(a,b,c,d)
+
+    def subopt_oracle(self, a, b, c, d):
         return self.call_subopt(a,b,c,d)
 
     # Internal 
@@ -19,15 +26,15 @@ class pmfeInterface:
         command = f"./pmfe-findmfe -a {a} -b {b} -c {c} -d {d} {self.filePath}".split()
         # print(command)
 
-        pmfe = subprocess.run(command, capture_output=True, text=True).stdout.split()
-        x, y, z, w = Rational(pmfe[1]), Rational(pmfe[2]), Rational(pmfe[3]), Rational(pmfe[4])
+        pmfe_raw = subprocess.run(command, stdout=subprocess.PIPE, encoding='UTF-8')
+        pmfe = [b for b in pmfe_raw.stdout.split()]
+        print(pmfe)
+        sig = Point(pmfe[1],pmfe[2],pmfe[3],pmfe[4])
 
         # print(x,y,z,w)
         #HANDLE ERRORS
         os.chdir(cwd)
-
-        
-        return (pmfe)
+        return (sig)
 
         # /home/owen/Documents/research/pmfe/pmfe-findmfe
 
@@ -45,7 +52,7 @@ class pmfeInterface:
         with open("out.tmp", "r") as out:
             for line in out.readlines()[4:]:
                 line = line.split()                
-                x,y,z,w = Rational(line[2]), Rational(line[3]), Rational(line[4]), Rational(line[5])
+                x,y,z,w = Point(line[2], line[3], line[4], line[5])
                 suboptScores.append((x,y,z,w))
             # print(out.readlines());
 
@@ -53,6 +60,10 @@ class pmfeInterface:
         os.chdir(cwd)
 
         return (suboptScores)
+    
+    def transform_z(self, point):
+        x,y,z,w = point
+        return Point(x, y, z - (3*x), w)
 
 # interface = pmfeInterface("/home/owen/Documents/research/pmfe", "/home/owen/Documents/research/RNA_Data/tRNA/tRNA_50/fasta/Aquifex.aeolicus.VF5_AE000657.fasta")
 

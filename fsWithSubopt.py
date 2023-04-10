@@ -4,14 +4,13 @@ from sympy import Point, Line
 from pmfeInterface import pmfeInterface
 from tippingPoint import tippingPoint
 
+
 class fanSlice():
-    def __init__(self, aB, cB):
-        self.aB = aB
-        self.cB = cB
+    def __init__(self, pmfe, rna_file):
         self.bVal = 0
         self.dVal = 1
 
-        self.nntm = pmfeInterface("/home/owen/Documents/research/pmfe", "/home/owen/Documents/research/RNA_Data/tRNA/tRNA_50/fasta/Aquifex.aeolicus.VF5_AE000657.fasta")
+        self.nntm = pmfeInterface(pmfe, rna_file)
 
         self.bordersRemaining = []
         self.searched = {}
@@ -19,9 +18,9 @@ class fanSlice():
     # def __init__(self):
     #     self.__init__(Fraction(50),Fraction(50))
     
-
-
-    def build(self):
+    def build(self, aB, cB):
+        self.aB = aB
+        self.cB = cB
         # Initialize
         #return starting queue with all the 
         self.initialize()   
@@ -46,10 +45,10 @@ class fanSlice():
 
     def initialize(self):
         p1, p2, p3, p4 = Point(self.aB, self.cB), Point(-self.aB, self.cB), Point(-self.aB, -self.cB), Point(self.aB, -self.cB)
-        s1 = self.nntm.vertex_oracle(p1[0], self.bVal, p1[1], self.dVal)[0]
-        s2 = self.nntm.vertex_oracle(p2[0], self.bVal, p2[1], self.dVal)[0]
-        s3 = self.nntm.vertex_oracle(p3[0], self.bVal, p3[1], self.dVal)[0]
-        s4 = self.nntm.vertex_oracle(p4[0], self.bVal, p4[1], self.dVal)[0]
+        s1 = self.nntm.subopt_oracle(p1[0], self.bVal, p1[1], self.dVal)[0]
+        s2 = self.nntm.subopt_oracle(p2[0], self.bVal, p2[1], self.dVal)[0]
+        s3 = self.nntm.subopt_oracle(p3[0], self.bVal, p3[1], self.dVal)[0]
+        s4 = self.nntm.subopt_oracle(p4[0], self.bVal, p4[1], self.dVal)[0]
 
         #(p1,p2)
         print("1,2")
@@ -90,7 +89,7 @@ class fanSlice():
             return []
         # if findIntersection(p1, p2, s1, s2) == []:
         #     return []
-        scores = self.nntm.vertex_oracle(intersection[0], self.bVal, intersection[1], self.dVal)
+        scores = self.nntm.subopt_oracle(intersection[0], self.bVal, intersection[1], self.dVal)
         # print("SCORES", scores)
 
         if s1 in scores and s2 in scores: 
@@ -101,7 +100,6 @@ class fanSlice():
             return self.findIntersections(p1, intersection, scores[0], s2).append((intersectionVal, scores))
         
         if s2 in scores: 
-            scores.remove(s2)
             return self.findIntersections(intersection, p2, s1, scores[0]).append((intersectionVal, scores))
         
         return self.findIntersections(intersection, p2, s1, scores[0]) + self.findIntersections(p1, intersection, scores[0], s2)
@@ -143,26 +141,3 @@ class fanSlice():
             # print("INTERPOINT", interPoint) 
 
             return interPoint, (point1, point2)
-
-    
-    # def line_intersection(self, line1, line2):
-    #     adiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
-    #     cdiff = (line1[0][1] - line1[1][1], line2[0][1] - line2[1][1])
-
-    #     def det(a, b):
-    #         return a[0] * b[1] - a[1] * b[0]
-
-    #     div = det(xdiff, ydiff)
-    #     if div == 0:
-    #         raise Exception('lines do not intersect')
-
-    #     d = (det(*line1), det(*line2))
-    #     a = det(d, adiff) / div
-    #     c = det(d, cdiff) / div
-        
-    #     return a, c
-
-s = fanSlice(50, 50)
-s.build()
-
-print(s.searched.keys())
