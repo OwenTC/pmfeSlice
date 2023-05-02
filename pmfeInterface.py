@@ -1,19 +1,20 @@
 import subprocess
 # from os import path
 import os
-from sympy import Point, Line
+from sympy import Point, Line, Rational
 
 class pmfeInterface:
     #Initialize with b and d!!!
-    def __init__(self, pmfePath, filePath):
+    def __init__(self, pmfePath, filePath, transform = False):
         self.pmfePath = pmfePath
         self.filePath = filePath
+        self.transform = transform
 
-    def vertex_oracle(self, a, b, c, d, transform = True):
-        # if transform:
-        #     a = a+3*c
-        #     return self.transform_z(self.call_pmfe(a,b,c,d))
-        # else:
+    def vertex_oracle(self, a, b, c, d):
+        if self.transform:
+            a = a-(c*3)
+            return self.transform_z(self.call_pmfe(a,b,c,d)) #self.transform_z
+
         return self.call_pmfe(a,b,c,d)
 
     def subopt_oracle(self, a, b, c, d):

@@ -5,11 +5,11 @@ from pmfeInterface import pmfeInterface
 from tippingPoint import tippingPoint
 
 class fanSlice():
-    def __init__(self, pmfe, rna_file):
+    def __init__(self, pmfe, rna_file, transform = False):
         self.bVal = 0
         self.dVal = 1
 
-        self.nntm = pmfeInterface(pmfe, rna_file)
+        self.nntm = pmfeInterface(pmfe, rna_file, transform)
 
         self.bordersRemaining = []
         self.searched = {}
@@ -22,7 +22,7 @@ class fanSlice():
         self.cB = cB
         # Initialize
         #return starting queue with all the 
-        self.initialize()   
+        self.initialize_square()   
 
         # while len(self.bordersRemaining) > 0:
         #     print("LENGTH REMAINING:", len(self.bordersRemaining))
@@ -42,7 +42,7 @@ class fanSlice():
 
         #     print("SIZE REMAINING END", len(self.bordersRemaining))
 
-    def initialize(self):
+    def initialize_square(self):
         p1, p2, p3, p4 = Point(self.aB, self.cB), Point(-self.aB, self.cB), Point(-self.aB, -self.cB), Point(self.aB, -self.cB)
         s2 = self.nntm.vertex_oracle(p2[0], self.bVal, p2[1], self.dVal)
         s1 = self.nntm.vertex_oracle(p1[0], self.bVal, p1[1], self.dVal)
@@ -64,10 +64,6 @@ class fanSlice():
         #(p4, p1):
         print("4, 1")
         self.addBoundryPointToQueue(self.findIntersections(p4, p1, s4, s1))
-
-    # def findIntersection(self, s1, s2):
-    #     x1, y1, z1, w1 = s1[0], s1[1], s1[2], s1[3]     
-    #        
 
     def addBoundryPointToQueue(self, points):
         for p, score in points:
@@ -119,13 +115,14 @@ class fanSlice():
             return None, None
             # print("SAME x, z SIGNATURE")
         
+        print("s1, s2", s1, s2)
         #define line
         if ((z2 - z1) == 0): 
-            #Vertical, return a-intersection
-            c = (k2 - k1) / (x1 - x2)
-            print(self.aB, k2, k1, x1, x2, c)
-            point1 = Point(self.aB, c)
-            point2 = Point(-self.aB, c)
+            #VERTICAL LINE
+            a = (k2 - k1) / (x1 - x2)
+            print(self.aB, k2, k1, x1, x2, a)
+            point1 = Point(a, self.cB) #Adds one/minus one to ensure vertical intersection.
+            point2 = Point(a, -self.cB)
             line = Line(point1, point2)
 
             print(point1, point2, paramLine,  line.intersection(paramLine))
