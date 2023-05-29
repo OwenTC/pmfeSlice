@@ -9,8 +9,10 @@ class pmfeInterface:
         self.pmfePath = pmfePath
         self.filePath = filePath
         self.transform = transform
+        self.pmfe_calls = 0
 
     def vertex_oracle(self, a, b, c, d):
+        self.pmfe_calls += 1
         if self.transform:
             a = a-(c*3)
             return self.transform_z(self.call_pmfe(a,b,c,d)) #self.transform_z

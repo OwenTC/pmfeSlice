@@ -15,8 +15,8 @@ class tippingPoint():
         self.a, self.c = point
         self.b = bVal
         self.d = dVal
-        self.delta_x = score1[2] - score2[2]
-        self.delta_z = -(score1[0] - score2[0])
+        # self.delta_x = score1[2] - score2[2]
+        # self.delta_z = -(score1[0] - score2[0])
 
         self.aB = 50
         self.cB = 50

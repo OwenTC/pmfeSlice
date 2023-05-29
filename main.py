@@ -8,7 +8,7 @@ def saveScores(scores):
     with open(args.output, 'w') as f:
         f.write("score, points\n")
         for s in scores.keys():
-            f.write(f"{s}, {scores[s]}\n")
+            f.write(f"{s}\n")
 
 parser = argparse.ArgumentParser(description="Computes Approximate Slice of Normal Fan By computing Squares")
 parser.add_argument("output")
