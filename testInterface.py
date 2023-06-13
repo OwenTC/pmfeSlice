@@ -1,6 +1,11 @@
 from pmfeInterface import pmfeInterface
+from sympy import Point2D
 
-interface = pmfeInterface("/home/owen/Documents/research/pmfe/", "/home/owen/Documents/research/RNA_Data/tRNA/tRNA_50/fasta/Aquifex.aeolicus.VF5_AE000657.fasta", True)
+interface = pmfeInterface("/home/owen/Documents/research/pmfe/", "/home/owen/Documents/research/RNA_Data/tRNA/o.nivara_tRNA.fasta", transform=True)
 
-print(interface.vertex_oracle(-22, 0, -16, 1))
-print(interface.subopt_oracle(5, 0, 5, 1))
+points = [Point2D(50, "-147/10")]
+
+for p in points:
+    print(p)
+    print(interface.vertex_oracle(p[0], 0, p[1], 1))
+    print(interface.subopt_oracle(p[0], 0, p[1], 1))

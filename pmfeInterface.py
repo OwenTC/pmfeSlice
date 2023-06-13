@@ -41,7 +41,7 @@ class pmfeInterface:
 
         pmfe_raw = subprocess.run(command, stdout=subprocess.PIPE, encoding='UTF-8')
         pmfe = [b for b in pmfe_raw.stdout.split()]
-        print(pmfe)
+        # print(pmfe)
         sig = Point(pmfe[1],pmfe[2],pmfe[3],pmfe[4])
 
         # print(x,y,z,w)

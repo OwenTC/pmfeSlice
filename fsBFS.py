@@ -1,6 +1,7 @@
 # Score and parameter vectors scores as tuples (x,y,z,w) or (a,b,c,d)
 from collections import defaultdict
 from sympy import Point, Line, convex_hull, Segment, Polygon
+from dataTypes import TippingPoint
 from tippingSegment import TippingSegment
 
 import json
@@ -8,7 +9,7 @@ import json
 from pmfeInterface import pmfeInterface
 from tippingPoint import tippingPoint
 
-class fanSlice():
+class FanSlice():
     def __init__(self, pmfe, rna_file, transform = False):
         self.bVal = 0
         self.dVal = 1
@@ -29,7 +30,7 @@ class fanSlice():
         self.aB = aB
         self.cB = cB
         # Initialize
-        #return starting queue with all the 
+        # return starting queue with all the 
         self.initialize_square()   
 
         # print(self.pointQueue)
@@ -40,28 +41,29 @@ class fanSlice():
 
             adjacent_points, segments = self.get_adjacent(point)
             
+            #NEEDS TO BE FIXED!!!
             for p in adjacent_points:
                 if p.point not in self.visited:
                     self.visited.add(p.point)
                     self.pointQueue.append(p)
-                    self.signatures[Point(p.scoreL[0], p.scoreL[2])].add(p.point)
-                    self.signatures[Point(p.scoreR[0], p.scoreR[2])].add(p.point)
             
             for s in segments: 
                 if s not in self.tippingSegments:
                     self.tippingSegments.append(s)
-
-            print("SIZE REMAINING END", len(self.pointQueue))
         
-        print(self.visited)
-        self.save_data()
+        print("PMFE CALLS:", self.nntm.pmfeCalls, "SUBOPT CALLS:", self.nntm.suboptCalls)
 
     def initialize_square(self):
         p1, p2, p3, p4 = Point(self.aB, self.cB), Point(-self.aB, self.cB), Point(-self.aB, -self.cB), Point(self.aB, -self.cB)
-        s2 = self.nntm.vertex_oracle(p2[0], self.bVal, p2[1], self.dVal)
         s1 = self.nntm.vertex_oracle(p1[0], self.bVal, p1[1], self.dVal)
+        s2 = self.nntm.vertex_oracle(p2[0], self.bVal, p2[1], self.dVal)
         s3 = self.nntm.vertex_oracle(p3[0], self.bVal, p3[1], self.dVal)
         s4 = self.nntm.vertex_oracle(p4[0], self.bVal, p4[1], self.dVal)
+
+        self.signatures[s1].add(p1)
+        self.signatures[s2].add(p2)
+        self.signatures[s3].add(p3)
+        self.signatures[s4].add(p4)
 
         print(self.nntm.pmfeCalls)
 
@@ -176,10 +178,11 @@ class fanSlice():
 
     def get_adjacent(self, p: tippingPoint):
         subopt = self.nntm.subopt_oracle(p.point[0], self.bVal, p.point[1], self.dVal)
-        print(subopt)
+        self.update_saved_signatures(subopt, p)
+        # print(subopt)
 
         sigs = [*set(subopt)]
-        print("SIGNATURES", sigs)
+        # print("SIGNATURES", sigs)
         if len(sigs) > 2: 
             sigs = self.sort_signatures(sigs) 
         else:
@@ -197,7 +200,7 @@ class fanSlice():
 
         adjPoints = []
         adjSegments = []
-        print("SIGNATURES AGAIN! SO COOL!", sigs)
+        # print("SIGNATURES AGAIN! SO COOL!", sigs)
         for i in range(-1, len(sigs) - 1):
             seg, point = TippingSegment.construct_from_point(p, sigs[i], sigs[i + 1], self.nntm, segments = self.tippingSegments)
             adjSegments.append(seg)
@@ -220,23 +223,39 @@ class fanSlice():
         #     return [pointDict[hull.p1], pointDict[hull.p2]]
         return([pointDict[v] for v in hull.vertices])
     
+    def update_saved_signatures(self, sigs, p: TippingPoint):
+        for s in sigs:
+            self.signatures[s].add(p.point)
+            # self.signatures[Point(p.scoreR[0], p.scoreR[2])].add(p.point)
 
     def save_data(self):
         # Construct Polygons
         polygons = []
-        self.signatures[Point(0,1)].add((1,2))
-        self.signatures[Point(0,1)].add((1,3))
-        self.signatures[Point(0,1)].add((1,4))
-        self.signatures[Point(0,1)].add((1,5))
         for s in self.signatures.keys():
             polygons.append((s, convex_hull(*self.signatures[s])))
         
-        with open("polygons.json", "w") as f:
-            f.write(json.dumps(polygons))
-        with open("visited.json", "w") as f:
-            f.write(json.dumps([self.visited]))
-        with open("segments.json", "w") as f:
-            f.write(json.dumps(self.tippingSegments))
+        with open("polygons.txt", "w") as f:
+            for s, p in polygons:
+                try:
+                    f.write(f"{(s[0],s[1],s[2],s[3])}: {','.join(str((x[0],x[1])) for x in p.vertices)}\n")
+                except AttributeError:
+                    print("Not a polygon", s, p)
+        
+        with open("visited.txt", "w") as f:
+            for v in [*self.visited]:
+                f.write(f"{(v[0],v[1])}\n")
+        
+        with open("segments.txt", "w") as f:
+            for s in self.tippingSegments:
+                f.write(f"{(s.segment.p1[0],s.segment.p1[1]), (s.segment.p2[0],s.segment.p2[1])}\n")
+        
+
+        # with open("polygons.json", "w") as f:
+        #     f.write(json.dumps(polygons))
+        # with open("visited.json", "w") as f:
+        #     f.write(json.dumps([self.visited]))
+        # with open("segments.json", "w") as f:
+        #     f.write(json.dumps(self.tippingSegments))
 
 
     # def line_intersection(self, line1, line2):

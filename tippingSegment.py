@@ -28,7 +28,7 @@ class TippingSegment():
     def construct_from_point(cls, point: tippingPoint, score_r, score_l, nntm: pmfeInterface, segments = []):
         dx = score_r[0] - score_l[0]
         dz = score_r[2] - score_l[2]
-        print("THIS IS THE POINT", point, point.boundry, "SCORES:", score_r, score_l)
+        # print("THIS IS THE POINT", point, point.boundry, "SCORES:", score_r, score_l)
 
         longSeg = None
         a1 = point.point[0]
@@ -79,19 +79,20 @@ class TippingSegment():
             else:
                 longSeg = hSegments[0]
 
-        print("LONG SEGMENT", longSeg)
+        # print("LONG SEGMENT", longSeg)
         for s in segments:
-            if longSeg.contains(s.segment):
+            if longSeg.contains(s.segment) and (s.segment.p1 == point.point or s.segment.p2 == point.point):
+                print("Already Computed")
                 endpoint = s.segment.p1
                 if endpoint == point:
                     endpoint = s.segment.p2
                 return s, tippingPoint(endpoint, score_l, score_r)
 
-        print(score_r, score_l, longSeg)
+        # print(score_r, score_l, longSeg)
         
-        print("TRANSFORMED", nntm.transform, longSeg.p2)
+        # print("TRANSFORMED", nntm.transform, longSeg.p2)
         longSegScore = nntm.vertex_oracle(longSeg.p2[0], 0, longSeg.p2[1], 1)
-        print("LONG SEG", longSeg, longSegScore)
+        # print("LONG SEG", longSeg, longSegScore)
         endpoint = cls.find_segment_endpoint(point.point, score_l, longSeg.p2, longSegScore, None, score_r, 0, 1, nntm)
         s = TippingSegment(score_r, score_l, Segment(point.point, endpoint))
         return s, tippingPoint(endpoint, score_l, score_r)
@@ -104,9 +105,9 @@ class TippingSegment():
         if type(intersection) == Line2D:
             intersection, _ = cls.findIntersection(vertex, point, altsv, sp)
 
-        print("FINDING SEGMENT FROM RAY:", intersection, point, sv, altsv)
+        # print("FINDING SEGMENT FROM RAY:", intersection, point, sv, altsv)
         if intersection == None or intersection == point or type(intersection) == Line2D:
-            print("BASE CASE")
+            # print("BASE CASE")
             # print("EQUALITY")
             return point
 
@@ -147,7 +148,7 @@ class TippingSegment():
             return None, None
             # print("SAME x, z SIGNATURE")
         
-        print("s1, s2", s1, s2)
+        # print("s1, s2", s1, s2)
         #define line
         if ((z2 - z1) == 0): 
             #VERTICAL LINE
@@ -168,8 +169,8 @@ class TippingSegment():
             point1 = Point(aB, (aB * x + const) / (z2 - z1))
             point2 = Point(-aB, (-aB * x + const) / (z2 - z1))
             
-            print("Po1 Po2:", point1, point2)
-            print("PARAM LINE", paramLine)
+            # print("Po1 Po2:", point1, point2)
+            # print("PARAM LINE", paramLine)
             interPoint = Line(point1, point2).intersection(paramLine)[0]
             # print("INTERPOINT", interPoint) 
 
