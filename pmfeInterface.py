@@ -9,10 +9,11 @@ class pmfeInterface:
         self.pmfePath = pmfePath
         self.filePath = filePath
         self.transform = transform
-        self.pmfe_calls = 0
+        self.pmfeCalls = 0
+        self.suboptCalls = 0
 
     def vertex_oracle(self, a, b, c, d):
-        self.pmfe_calls += 1
+        self.pmfeCalls += 1
         if self.transform:
             a = a-(c*3)
             return self.transform_z(self.call_pmfe(a,b,c,d)) #self.transform_z
@@ -20,6 +21,15 @@ class pmfeInterface:
         return self.call_pmfe(a,b,c,d)
 
     def subopt_oracle(self, a, b, c, d):
+        self.suboptCalls += 1
+        if self.transform:
+            a = a-(c*3)
+            subopt= self.call_subopt(a,b,c,d)
+            transformed = []
+            for s in subopt:
+                transformed.append(self.transform_z(s))
+
+            return transformed
         return self.call_subopt(a,b,c,d)
 
     # Internal 
@@ -44,7 +54,7 @@ class pmfeInterface:
     def call_subopt(self, a, b, c, d):
         cwd = os.getcwd()
         os.chdir(self.pmfePath)
-        command = f"./pmfe-subopt -a {a} -b {b} -c {c} -d {d} -o out.tmp {self.filePath}".split()
+        command = f"./pmfe-subopt -a {a} -b {b} -c {c} -d {d} --delta 0 -o out.tmp {self.filePath}".split()
         
         subprocess.run(command) # text=True)
         #HANDLE ERRORS
@@ -56,7 +66,7 @@ class pmfeInterface:
             for line in out.readlines()[4:]:
                 line = line.split()                
                 x,y,z,w = Point(line[2], line[3], line[4], line[5])
-                suboptScores.append((x,y,z,w))
+                suboptScores.append(Point(x,y,z,w))
             # print(out.readlines());
 
         os.remove("out.tmp")
