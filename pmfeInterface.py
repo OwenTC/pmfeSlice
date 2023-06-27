@@ -5,14 +5,15 @@ from sympy import Point, Line, Rational
 
 class pmfeInterface:
     #Initialize with b and d!!!
-    def __init__(self, pmfePath, filePath, transform = False):
+    def __init__(self, pmfePath: str, filePath:str, transform: bool = False): 
         self.pmfePath = pmfePath
         self.filePath = filePath
         self.transform = transform
         self.pmfeCalls = 0
         self.suboptCalls = 0
 
-    def vertex_oracle(self, a, b, c, d):
+    #Calls pmfe with params a, b, c, d
+    def vertex_oracle(self, a: Rational, b: Rational, c: Rational, d: Rational):
         self.pmfeCalls += 1
         if self.transform:
             a = a-(c*3)
@@ -20,7 +21,8 @@ class pmfeInterface:
 
         return self.call_pmfe(a,b,c,d)
 
-    def subopt_oracle(self, a, b, c, d):
+    #Calls subopt with params a, b, c, d
+    def subopt_oracle(self, a: Rational, b: Rational, c: Rational, d: Rational):
         self.suboptCalls += 1
         if self.transform:
             a = a-(c*3)
@@ -32,31 +34,32 @@ class pmfeInterface:
             return transformed
         return self.call_subopt(a,b,c,d)
 
-    # Internal 
+#----------------------------------------------------------------------------------------------------------
+    # Internal Methods
+
     def call_pmfe(self, a, b, c, d):
         cwd = os.getcwd()
         os.chdir(self.pmfePath)
         command = f"./pmfe-findmfe -a {a} -b {b} -c {c} -d {d} {self.filePath}".split()
-        # print(command)
 
         pmfe_raw = subprocess.run(command, stdout=subprocess.PIPE, encoding='UTF-8')
         pmfe = [b for b in pmfe_raw.stdout.split()]
-        # print(pmfe)
         sig = Point(pmfe[1],pmfe[2],pmfe[3],pmfe[4])
 
-        # print(x,y,z,w)
         #HANDLE ERRORS
+        #
+        #
+        #
+
         os.chdir(cwd)
         return (sig)
-
-        # /home/owen/Documents/research/pmfe/pmfe-findmfe
 
     def call_subopt(self, a, b, c, d):
         cwd = os.getcwd()
         os.chdir(self.pmfePath)
         command = f"./pmfe-subopt -a {a} -b {b} -c {c} -d {d} --delta 0 -o out.tmp {self.filePath}".split()
         
-        subprocess.run(command) # text=True)
+        subprocess.run(command, stdout=subprocess.PIPE, encoding='UTF-8') # text=True)
         #HANDLE ERRORS
         #
         #
