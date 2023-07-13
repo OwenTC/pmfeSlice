@@ -1,5 +1,6 @@
-from sympy import Point, Line, Segment, Line2D, Segment2D
-from pmfeInterface import pmfeInterface
+from sympy import Point, Line, Segment, Line2D, Segment2D, Point2D
+
+import time
 
 def construct_from_point(self, point, score_r, score_l):
     longSeg = self.find_segment_direction(point, score_r, score_l)
@@ -12,7 +13,7 @@ def construct_from_point(self, point, score_r, score_l):
                 endpoint = s.p2
             return s, endpoint
 
-    longSeg = self.shorten_segment(longSeg)
+    longSeg = self.shorten_segment_2(longSeg)
     
     longSegScore = self.nntm.vertex_oracle(longSeg.p2[0], self.bVal, longSeg.p2[1], self.dVal)
     endpoint = self.find_segment_endpoint(point, score_l, longSeg.p2, longSegScore, score_r)
@@ -32,9 +33,9 @@ def find_segment_direction(self, point, score_r, score_l):
     vSegments = []
     hSegments = []
     if (dz != 0):
-        hSegments = [Segment(point, Point(self.aB, (-dx/dz)*(self.aB-a1) + c1)),  Segment(point, Point(-self.aB, (-dx/dz)*(-self.aB-a1) + c1))]
+        hSegments = [Segment(point, Point(self.aB, (-dx/dz)*(self.aB-a1) + c1)),  Segment(point, Point(self.ab, (-dx/dz)*(self.ab-a1) + c1))]
     if (dx != 0):
-        vSegments = [Segment(point, Point((-dz/dx)*(self.cB-c1) + a1, self.cB)), Segment(point, Point((-dz/dx)*(-self.cB-c1) + a1, -self.cB))]
+        vSegments = [Segment(point, Point((-dz/dx)*(self.cB-c1) + a1, self.cB)), Segment(point, Point((-dz/dx)*(self.cb-c1) + a1, self.cb))]
 
     #Determing the direction of the ray
     vertical = (hSegments == [])
@@ -79,6 +80,19 @@ def find_segment_endpoint(self, basePoint, baseScore, endPoint, endScore, altSco
     interScore = self.nntm.vertex_oracle(intersection[0], self.bVal, intersection[1], self.dVal)
     return self.find_segment_endpoint(basePoint, baseScore, intersection, interScore, altScore)
 
+def distance_to_intersection(self, seg1, seg2):
+    inter = seg1.intersection(seg2)
+    if len(inter) > 0:
+        if type(inter[0]) is Segment2D:
+            inter[0] = min([inter[0].p1, inter[0].p2], key=lambda t: t.distance(seg2.p1))
+        dist = inter[0].distance(seg1.p1)
+        if dist > 0:
+            return dist
+        else:
+            return 10*max(self.aB, self.cB)
+    else:
+        return 10*max(self.aB, self.cB)
+
 # Shorten a given segment by finding the intersection with the closest segment already found.
 def shorten_segment(self, seg):
     intersections = []
@@ -94,8 +108,21 @@ def shorten_segment(self, seg):
     
     if len(intersections) == 0:
         return seg
-    
+  
     new_seg = Segment(seg.p1, min(intersections, key=lambda t: t[1])[0])
+    return new_seg
+
+def shorten_segment_2(self, seg):
+    min_segement = min(self.tippingSegments, key=lambda t: self.distance_to_intersection(seg, t))
+    intersection = seg.intersection(min_segement)
+    if intersection == [] or intersection[0] == seg.p1:
+        return seg
+
+    if type(intersection[0]) is Segment2D:
+        intersection[0] = min([intersection[0].p1, intersection[0].p2], key=lambda t: t.distance(seg.p1))
+
+    new_seg = Segment(seg.p1, intersection[0])
+    
     return new_seg
 
 # Computes the intersection with a tipping line given 2 points their scores.
@@ -116,7 +143,7 @@ def find_tipping_line_intersection(self, p1, p2, s1, s2):
         #VERTICAL LINE
         a = (k2 - k1) / (x1 - x2)
         point1 = Point(a, self.cB)
-        point2 = Point(a, -self.cB)
+        point2 = Point(a, self.cb)
         line = Line(point1, point2)
 
         interPoint = line.intersection(paramLine)[0]
@@ -126,7 +153,7 @@ def find_tipping_line_intersection(self, p1, p2, s1, s2):
         x = (x1 - x2)
         const = (k1 - k2)
         point1 = Point(self.aB, (self.aB * x + const) / (z2 - z1))
-        point2 = Point(-self.aB, (-self.aB * x + const) / (z2 - z1))
+        point2 = Point(self.ab, (self.ab * x + const) / (z2 - z1))
         
         interPoint = Line(point1, point2).intersection(paramLine)[0]
 
