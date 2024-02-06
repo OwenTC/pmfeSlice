@@ -1,7 +1,8 @@
 # Score and parameter vectors scores as tuples (x,y,z,w) or (a,b,c,d)
 from collections import defaultdict
-from sympy import Point, Segment2D, convex_hull, Segment, Rational
+from sympy import Point, Segment2D, convex_hull, Segment, Rational, Polygon
 # from tippingSegment import TippingSegment
+from random import randint
 
 from pmfeInterface import pmfeInterface
 
@@ -21,19 +22,25 @@ class fsBFS():
         self.visited = set()
         self.signatures = defaultdict(set)
 
-    from ._tippingSegment import construct_from_point, find_tipping_line_intersection, find_segment_endpoint, shorten_segment, find_segment_direction, distance_to_intersection, shorten_segment_2
+        self.pointQueueHull = None
+
+    from ._tippingSegment import construct_segment_from_point, find_tipping_line_intersection, find_segment_endpoint, shorten_segment, find_segment_direction, distance_to_intersection, shorten_segment_2
     from ._saveData import save_data
     
     def build(self):
         # Initialize
-        # return starting queue with all the 
+        # return starting queue with boundry
         self.initialize_square()   
 
         # print(self.pointQueue)
         # print(self.tippingSegments)
         while len(self.pointQueue) > 0:
             # print("VERTICES REMAINING:", len(self.pointQueue))
-            point = self.pointQueue.pop(0)
+            # point = self.pointQueue.pop(0)
+            self.pointQueueHull = convex_hull(*self.pointQueue, polygon=True)
+            points = self.vertices_from_geometry(self.pointQueueHull)
+            point = points[len(points)//2]
+            self.pointQueue.remove(point)
 
             adjacent_points, segments = self.get_adjacent(point)
             
@@ -83,33 +90,38 @@ class fsBFS():
         self.add_frame_point_to_queue(self.find_collinear_tipping_points(p4, p1, s4, s1))
 
     def add_frame_point_to_queue(self, points):
-        for i, (p, _) in enumerate(points):
-            point, _ = p
-            if i+1 < len(points):
-                self.tippingSegments.add(Segment(point, points[i+1][0][0]))
-            if point in self.visited:
+        for i, (point,_) in enumerate(points):
+            #Remove duplicates found from find_colinear_tipping_points
+            if point == points[(i+1)%len(points)][0]:
                 continue
-            else:
-                # print(score, point)
-                self.pointQueue.append(point)
-                self.visited.add(point)
+            if i+1 < len(points):
+                self.tippingSegments.add(Segment(point, points[i+1][0]))
+            # if point in self.visited:
+            #     continue
+
+            # print(score, point)
+            self.pointQueue.append(point)
+            self.visited.add(point)
 
 
     def find_collinear_tipping_points(self, p1, p2, s1, s2):
         # Remove intersectionVal information!!!
-        intersection, endpoints = self.find_tipping_line_intersection(p1, p2, s1, s2)
-        intersectionVal = (intersection, endpoints)
+        intersection, _ = self.find_tipping_line_intersection(p1, p2, s1, s2)
 
-        if intersection == None or intersection == p1 or intersection == p2:
+        if intersection == None:
             return []
+        if intersection == p1:
+            return [(intersection, s1)]
+        if intersection == p2:
+            return [(intersection, s2)]
 
         score = self.nntm.vertex_oracle(intersection[0], self.bVal, intersection[1], self.dVal)
 
         if s1 == score:
-            return self.find_collinear_tipping_points(intersection, p2, score, s2) + [(intersectionVal, score)]
+            return self.find_collinear_tipping_points(intersection, p2, score, s2) + [(intersection, score)]
         
         if s2 == score: 
-            return self.find_collinear_tipping_points(p1, intersection, s1, score) + [(intersectionVal, score)]
+            return self.find_collinear_tipping_points(p1, intersection, s1, score) + [(intersection, score)]
         
         return self.find_collinear_tipping_points(intersection, p2, score, s2) + self.find_collinear_tipping_points(p1, intersection, s1, score)
 
@@ -141,7 +153,7 @@ class fsBFS():
         for i in range(-1, len(sigs) - 1):
             if self.OBframeSignature(p, sigs[i], sigs[i + 1]):
                 continue
-            seg, point = self.construct_from_point(p, sigs[i], sigs[i + 1])
+            seg, point = self.construct_segment_from_point(p, sigs[i], sigs[i + 1])
             adjSegments.append(seg)
             adjPoints.append(point)
 
@@ -184,3 +196,13 @@ class fsBFS():
     def update_saved_signatures(self, sigs, p):
         for s in sigs:
             self.signatures[s].add(p)
+
+    #Gets vertices from point2d, segment2D, and polygon
+    def vertices_from_geometry(self, geom):
+        if issubclass(type(geom),Point):
+            return [geom]
+        if issubclass(type(geom),Segment):
+            return [geom.p1, geom.p2]
+        if issubclass(type(geom),Polygon):
+            return geom.vertices
+        raise TypeError(f"Geometry {geom} is not a Polygon, Segment, or Point.")

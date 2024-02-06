@@ -1,73 +1,91 @@
-from sympy import Point, Line, Segment, Line2D, Segment2D, Point2D
+from sympy import Point, Line, Segment, Line2D, Segment2D, Point2D, atan, Ray, zoo, pi, Polygon, convex_hull
 
-import time
+def construct_segment_from_point(self, point, score_r, score_l):
+    ray = self.find_segment_direction(point, score_r, score_l)
 
-def construct_from_point(self, point, score_r, score_l):
-    longSeg = self.find_segment_direction(point, score_r, score_l)
-
-    # Check if segment has already been found
+    # Check if segment has already been found in ray
     for s in self.tippingSegments:
-        if longSeg.contains(s) and (s.p1 == point or s.p2 == point):
+        if (s.p1 == point or s.p2 == point) and ray.contains(s):
             endpoint = s.p1
             if endpoint == point:
                 endpoint = s.p2
             return s, endpoint
 
-    longSeg = self.shorten_segment_2(longSeg)
-    
-    longSegScore = self.nntm.vertex_oracle(longSeg.p2[0], self.bVal, longSeg.p2[1], self.dVal)
-    endpoint = self.find_segment_endpoint(point, score_l, longSeg.p2, longSegScore, score_r)
+    #Truncate ray using convex hull
+    # queue_hull = convex_hull(*self.pointQueue, point, polygon=True)
+    ray_hull_intersection = [p for p in ray.intersection(self.pointQueueHull) if p != point][0]
+    if type(ray_hull_intersection) == Segment2D: #Occurs when tipping segment is an edge of the convex hull. 
+        ray_hull_intersection = ray_hull_intersection.p2 if ray_hull_intersection.p2 != point else ray_hull_intersection.p1
+
+    #Segment the ray to find tipping point
+    seg_hull_score = self.nntm.vertex_oracle(ray_hull_intersection[0], self.bVal, ray_hull_intersection[1], self.dVal)
+    endpoint = self.find_segment_endpoint(point, score_l, ray_hull_intersection, seg_hull_score, score_r)
     s = Segment(point, endpoint)
     return s, endpoint
 
 # Finds the direction of a segment given its left and right score vector.
-# Returns a segment that intersects the frame in the correct direction.
+# Returns a ray in the correct direction.
 def find_segment_direction(self, point, score_r, score_l):
     #Variables for tipping line equation
     dx = score_r[0] - score_l[0]
     dz = score_r[2] - score_l[2]
-    a1 = point[0]
-    c1 = point[1]
-    longSeg = None
 
-    vSegments = []
-    hSegments = []
-    if (dz != 0):
-        hSegments = [Segment(point, Point(self.aB, (-dx/dz)*(self.aB-a1) + c1)),  Segment(point, Point(self.ab, (-dx/dz)*(self.ab-a1) + c1))]
-    if (dx != 0):
-        vSegments = [Segment(point, Point((-dz/dx)*(self.cB-c1) + a1, self.cB)), Segment(point, Point((-dz/dx)*(self.cb-c1) + a1, self.cb))]
-
-    #Determing the direction of the ray
-    vertical = (hSegments == [])
-    horizontal = (vSegments == [])
-    if dx <= 0 and dz <= 0:
-        #north west 
-        if vertical or ((not horizontal) and abs(vSegments[0].p2[0]) <= self.aB and abs(vSegments[0].p2[1]) <= self.cB): 
-            longSeg = vSegments[0]
-        else:
-            longSeg = hSegments[1]
-    elif dx > 0 and dz <= 0:
-        #south west
-        if vertical or ((not horizontal) and abs(vSegments[1].p2[0]) <= self.aB and abs(vSegments[1].p2[1]) <= self.cB): 
-            longSeg = vSegments[1]
-        else:
-            longSeg = hSegments[1]
-    elif dx <= 0 and dz > 0:
-        #north east
-        if vertical or ((not horizontal) and abs(vSegments[0].p2[0]) <= self.aB and abs(vSegments[0].p2[1]) <= self.cB): 
-            longSeg = vSegments[0]
-        else:
-            longSeg = hSegments[0]
-    elif dx > 0 and dz > 0:
-        #south east
-        if vertical or ((not horizontal) and abs(vSegments[1].p2[0]) <= self.aB and abs(vSegments[1].p2[1]) <= self.cB): 
-            longSeg = vSegments[1]
-        else:
-            longSeg = hSegments[0]
+    slope = (-dx)/dz
+    angle = atan(slope) if slope != zoo else pi/2
+    if dz < 0 or (dz == 0 and dx > 0): 
+        angle += pi
     
-    return longSeg
+    return Ray(point, angle=angle)
 
-# Find the endpoint of segmnent given its base verte
+
+# Finds the direction of a segment given its left and right score vector.
+# Returns a segment that intersects the frame in the correct direction.
+# def find_segment_direction(self, point, score_r, score_l):
+#     #Variables for tipping line equation
+#     dx = score_r[0] - score_l[0]
+#     dz = score_r[2] - score_l[2]
+#     a1 = point[0]
+#     c1 = point[1]
+#     longSeg = None
+
+#     vSegments = []
+#     hSegments = []
+#     if (dz != 0):
+#         hSegments = [Segment(point, Point(self.aB, (-dx/dz)*(self.aB-a1) + c1)),  Segment(point, Point(self.ab, (-dx/dz)*(self.ab-a1) + c1))]
+#     if (dx != 0):
+#         vSegments = [Segment(point, Point((-dz/dx)*(self.cB-c1) + a1, self.cB)), Segment(point, Point((-dz/dx)*(self.cb-c1) + a1, self.cb))]
+
+#     #Determing the direction of the ray
+#     vertical = (hSegments == [])
+#     horizontal = (vSegments == [])
+#     if dx <= 0 and dz <= 0:
+#         #north west 
+#         if vertical or ((not horizontal) and abs(vSegments[0].p2[0]) <= self.aB and abs(vSegments[0].p2[1]) <= self.cB): 
+#             longSeg = vSegments[0]
+#         else:
+#             longSeg = hSegments[1]
+#     elif dx > 0 and dz <= 0:
+#         #south west
+#         if vertical or ((not horizontal) and abs(vSegments[1].p2[0]) <= self.aB and abs(vSegments[1].p2[1]) <= self.cB): 
+#             longSeg = vSegments[1]
+#         else:
+#             longSeg = hSegments[1]
+#     elif dx <= 0 and dz > 0:
+#         #north east
+#         if vertical or ((not horizontal) and abs(vSegments[0].p2[0]) <= self.aB and abs(vSegments[0].p2[1]) <= self.cB): 
+#             longSeg = vSegments[0]
+#         else:
+#             longSeg = hSegments[0]
+#     elif dx > 0 and dz > 0:
+#         #south east
+#         if vertical or ((not horizontal) and abs(vSegments[1].p2[0]) <= self.aB and abs(vSegments[1].p2[1]) <= self.cB): 
+#             longSeg = vSegments[1]
+#         else:
+#             longSeg = hSegments[0]
+    
+#     return longSeg
+
+# Find the endpoint of segmnent given its base vertex
 def find_segment_endpoint(self, basePoint, baseScore, endPoint, endScore, altScore):
     intersection, _ = self.find_tipping_line_intersection(basePoint, endPoint, baseScore, endScore)
 
