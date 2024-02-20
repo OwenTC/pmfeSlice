@@ -1,7 +1,10 @@
 from sympy import Point, Line, Segment, Line2D, Segment2D, Point2D, atan, Ray, zoo, pi, Polygon, convex_hull
 
+_debug = True
+
 def construct_segment_from_point(self, point, score_r, score_l):
     ray = self.find_segment_direction(point, score_r, score_l)
+    print(ray.p1, ray.p2, score_r, score_l)
 
     # Check if segment has already been found in ray
     for s in self.tippingSegments:
@@ -20,6 +23,7 @@ def construct_segment_from_point(self, point, score_r, score_l):
     #Segment the ray to find tipping point
     seg_hull_score = self.nntm.vertex_oracle(ray_hull_intersection[0], self.bVal, ray_hull_intersection[1], self.dVal)
     endpoint = self.find_segment_endpoint(point, score_l, ray_hull_intersection, seg_hull_score, score_r)
+    endpoint = Point(int(round(endpoint[0])), int(round(endpoint[1])))
     s = Segment(point, endpoint)
     return s, endpoint
 
@@ -30,7 +34,7 @@ def find_segment_direction(self, point, score_r, score_l):
     dx = score_r[0] - score_l[0]
     dz = score_r[2] - score_l[2]
 
-    slope = (-dx)/dz
+    slope = (-dx)/dz if dz != 0 else (zoo)
     angle = atan(slope) if slope != zoo else pi/2
     if dz < 0 or (dz == 0 and dx > 0): 
         angle += pi
@@ -87,12 +91,15 @@ def find_segment_direction(self, point, score_r, score_l):
 
 # Find the endpoint of segmnent given its base vertex
 def find_segment_endpoint(self, basePoint, baseScore, endPoint, endScore, altScore):
+    # print("P1", basePoint, baseScore, endPoint, endScore, altScore)
     intersection, _ = self.find_tipping_line_intersection(basePoint, endPoint, baseScore, endScore)
 
+    # print("INTERSECTION", basePoint, baseScore, endPoint, endScore, altScore, intersection)
     if type(intersection) == Line2D:
+        print("INTERSECTION", basePoint, baseScore, endPoint, endScore, altScore, intersection)
         intersection, _ = self.find_tipping_line_intersection(basePoint, endPoint, altScore, endScore)
     
-    if intersection == None or intersection == endPoint or type(intersection) == Line2D:
+    if intersection == None or type(intersection) == Line2D or (intersection.distance(endPoint) < 0.01):
         return endPoint
 
     interScore = self.nntm.vertex_oracle(intersection[0], self.bVal, intersection[1], self.dVal)
@@ -154,25 +161,36 @@ def find_tipping_line_intersection(self, p1, p2, s1, s2):
     k1 = self.bVal * y1 + self.dVal * w1
     k2 = self.bVal * y2 + self.dVal * w2
 
+    if (_debug):
+        print(f"{(p1[0], p1[1])}, {(p2[0], p2[1])}\n({x1 - x2})/({z2 - z1})x+({k1}-{k2})/({z2-z1})") #TIPPING LINE BETWEEN {(p1[0], p1[1])}, {(p2[0], p2[1])}: 
+        # print(f"SCORES: {[s for s in s1]}, {[s for s in s2]}")
+        # print(f"PARAMS: {[s for s in p1]}, {[s for s in p2]}")
+
     if ((z2 - z1) == 0 and (x1-x2) == 0):
         return None, None
-    
+
+    point1, point2 = None, None
     if ((z2 - z1) == 0): 
         #VERTICAL LINE
         a = (k2 - k1) / (x1 - x2)
         point1 = Point(a, self.cB)
         point2 = Point(a, self.cb)
-        line = Line(point1, point2)
-
-        interPoint = line.intersection(paramLine)[0]
-        return interPoint, (point1, point2)
 
     else:
         x = (x1 - x2)
         const = (k1 - k2)
         point1 = Point(self.aB, (self.aB * x + const) / (z2 - z1))
         point2 = Point(self.ab, (self.ab * x + const) / (z2 - z1))
-        
-        interPoint = Line(point1, point2).intersection(paramLine)[0]
-
-        return interPoint, (point1, point2)
+    
+    #Lines are parallel when we need to check alt signature
+    #THIS CAN BE SIMPLIFIED
+    tipLine = Line(point1, point2)
+    # if tipLine.is_parallel(paramLine):
+    #     return paramLine, (point1, point2)
+    if tipLine.smallest_angle_between(paramLine) < 0.1:
+        print("SLOPES", tipLine.slope, paramLine.slope)
+        return paramLine, (point1, point2)
+    
+    interPoint = Line(point1, point2).intersection(paramLine)[0]
+    # print("INTERPOINT", tuple(interPoint), tuple(p1), tuple(p2), sep=", ")
+    return interPoint, (point1, point2)
