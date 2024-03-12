@@ -31,4 +31,13 @@
 *.out
 *.app
 
+
+# Data outputs
+*.csv
+*.txt
+*.png
+*.json
+*.fasta
+
+
 __pycache__
