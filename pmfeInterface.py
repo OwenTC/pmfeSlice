@@ -22,17 +22,17 @@ class pmfeInterface:
         return self.call_pmfe(a,b,c,d)
 
     #Calls subopt with params a, b, c, d
-    def subopt_oracle(self, a: Rational, b: Rational, c: Rational, d: Rational):
+    def subopt_oracle(self, a: Rational, b: Rational, c: Rational, d: Rational,eng=0.03):
         self.suboptCalls += 1
         if self.transform:
             a = a-(c*3)
-            subopt= self.call_subopt(a,b,c,d)
+            subopt= self.call_subopt(a,b,c,d,eng=eng)
             transformed = []
             for s in subopt:
                 transformed.append(self.transform_z(s))
 
             return transformed
-        return self.call_subopt(a,b,c,d)
+        return self.call_subopt(a,b,c,d,eng=eng)
 
 #----------------------------------------------------------------------------------------------------------
     # Internal Methods
@@ -55,11 +55,13 @@ class pmfeInterface:
         # os.chdir(cwd)
         return (sig)
 
-    def call_subopt(self, a, b, c, d):
+    def call_subopt(self, a, b, c, d, eng=0.03):
         # cwd = os.getcwd()
         # os.chdir(self.pmfePath)
         subopt_path = os.path.join(self.pmfePath, "pmfe-subopt")
-        command = f"{subopt_path} -a {a} -b {b} -c {c} -d {d} --delta 0 -C {self.filePath}".split()
+        command = f"{subopt_path} -a {a} -b {b} -c {c} -d {d} --delta {eng} -C {self.filePath}".split()
+
+        print("SUBOPT"," ".join(command))
         
         subopt_raw = subprocess.run(command, stdout=subprocess.PIPE, encoding='UTF-8') # text=True)
         #HANDLE ERRORS

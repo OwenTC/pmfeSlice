@@ -51,6 +51,7 @@ class ViennaInterface:
     def scored_structure(self, struct):
         full_path = os.path.join(self.pmfePath, "pmfe-scorer")
         command = f"{full_path} {self.filePath} {struct}".split()
+        print(" ".join(command))
 
         pmfe_raw = subprocess.run(command, stdout=subprocess.PIPE, encoding='UTF-8')
         # return(pmfe_raw)
@@ -96,10 +97,11 @@ class ViennaInterface:
         # compute MFE
         (structure, en) = self.fc.mfe()
         # print(structure, en)
+        print(a, b, c, d)
         sig_no_w = self.scored_structure(structure)
         sig = sig_no_w[:3] + (self.compute_w(sig_no_w, (a,b,c,d), en),)
         # sig = sig_no_w
-        # print("ENERGY DIFF", (sig_no_w[-1] - sig[-1]))
+        print("ENERGY DIFF", (sig_no_w[-1] - sig[-1]), sig, sig_no_w, en)
         # print("STRUCTURE SIG", structure, sig, en)
         return sig
     
