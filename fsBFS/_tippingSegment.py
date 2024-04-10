@@ -80,7 +80,6 @@ def find_segment_direction(self, point, score_r, score_l):
     
     return Ray(point, angle=angle)
 
-
 # Finds the direction of a segment given its left and right score vector.
 # Returns a segment that intersects the frame in the correct direction.
 # def find_segment_direction(self, point, score_r, score_l):
@@ -192,6 +191,7 @@ def shorten_segment_2(self, seg):
 # Computes the intersection with a tipping line given 2 points their scores.
 # Returns intersection point, endpoints of tipping line
 def find_tipping_line_intersection(self, p1, p2, s1, s2):
+    # debug_print(f"{(p1[0], p1[1])}, {(p2[0], p2[1])}")
     paramLine = Line(p1, p2)
     
     x1, y1, z1, w1 = s1
@@ -200,7 +200,7 @@ def find_tipping_line_intersection(self, p1, p2, s1, s2):
     k1 = self.bVal * y1 + self.dVal * w1
     k2 = self.bVal * y2 + self.dVal * w2
 
-    # debug_print(f"{(p1[0], p1[1])}, {(p2[0], p2[1])}\n({x1 - x2})/({z2 - z1})x+({k1}-{k2})/({z2-z1})") #TIPPING LINE BETWEEN {(p1[0], p1[1])}, {(p2[0], p2[1])}: 
+    # debug_print(f"({x1 - x2})/({z2 - z1})x+({k1}-{k2})/({z2-z1})") #TIPPING LINE BETWEEN {(p1[0], p1[1])}, {(p2[0], p2[1])}: 
         # debug_print(f"SCORES: {[s for s in s1]}, {[s for s in s2]}")
         # debug_print(f"PARAMS: {[s for s in p1]}, {[s for s in p2]}")
 
@@ -232,3 +232,42 @@ def find_tipping_line_intersection(self, p1, p2, s1, s2):
     interPoint = Line(point1, point2).intersection(paramLine)[0]
     # debug_print("INTERPOINT", tuple(interPoint), tuple(p1), tuple(p2), sep=", ")
     return interPoint, (point1, point2)
+
+#p1, p2 and s1, s2 are left and right parameters and scores respectively.
+def find_tipping_line(self, s1, s2):
+    x1, y1, z1, w1 = s1
+    x2, y2, z2, w2 = s2
+    
+    k1 = self.bVal * y1 + self.dVal * w1
+    k2 = self.bVal * y2 + self.dVal * w2
+
+    if ((z2 - z1) == 0 and (x1-x2) == 0):
+        return None, None
+
+    point1, point2 = None, None
+    if ((z2 - z1) == 0): 
+        #VERTICAL LINE
+        da = (k2 - k1) / (x1 - x2)
+        eq_c = lambda c: da
+        eq_a = None
+        slope = zoo
+        # point1 = Point(a, self.cB)
+        # point2 = Point(a, self.cb)
+    elif ((x2 - x1) == 0):
+        dc = (k1 - k2) / (z2 - z1)
+        eq_c = None
+        eq_a = lambda c: dc
+        slope = 0
+    else:
+        dx = (x1 - x2)
+        dz = (z2 - z1)
+        const = (k1 - k2)
+        eq_c = lambda c: (c * dz - const) / dx 
+        eq_a = lambda a: (a * dx + const) / dz
+        slope = dx/dz
+        # point1 = Point(self.aB, (self.aB * x + const) / (z2 - z1))
+        # point2 = Point(self.ab, (self.ab * x + const) / (z2 - z1))
+
+    #eq_a is equation outputs c given a, eq_c outputs a given c
+    return eq_a, eq_c, slope
+#Line(point1, point2)

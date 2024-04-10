@@ -2,6 +2,7 @@ import subprocess
 # from os import path
 import os
 from sympy import Point, Line, Rational
+from scorer import RNAStructure
 
 import sys
 sys.path.append("/home/owen/Documents/research/ViennaCode/ViennaRNA-2.5.1/interfaces/Python")
@@ -51,7 +52,6 @@ class ViennaInterface:
     def scored_structure(self, struct):
         full_path = os.path.join(self.pmfePath, "pmfe-scorer")
         command = f"{full_path} {self.filePath} {struct}".split()
-        print(" ".join(command))
 
         pmfe_raw = subprocess.run(command, stdout=subprocess.PIPE, encoding='UTF-8')
         # return(pmfe_raw)
@@ -67,11 +67,10 @@ class ViennaInterface:
 
         return sig
     
-    #NEED TO TEST THIS METHOD RIGOROUSLY
     def compute_w(self, sig, params, eng):
         #times 100 to convert from kkals to dckals
         # print(list((s,p) for s,p in zip(sig, params[:3])))
-        return (eng*100 - sum((s*p) for s,p in zip(sig, params[:3])))/params[3]
+        return (round(eng*100) - sum((s*p) for s,p in zip(sig, params[:3])))/params[3]
 
     def change_params(self, a, b, c):
         #String b 0 a 0 c 0 found from /ViennaRNA-2.5.1/misc/rna_turner1999.par (search for "ML_params")
@@ -97,11 +96,12 @@ class ViennaInterface:
         # compute MFE
         (structure, en) = self.fc.mfe()
         # print(structure, en)
-        print(a, b, c, d)
-        sig_no_w = self.scored_structure(structure)
-        sig = sig_no_w[:3] + (self.compute_w(sig_no_w, (a,b,c,d), en),)
+        # print(a, b, c, d)
+        sig_no_w = tuple(RNAStructure(structure).score_structure())
+
+        sig = sig_no_w + (self.compute_w(sig_no_w, (a,b,c,d), en),)
         # sig = sig_no_w
-        print("ENERGY DIFF", (sig_no_w[-1] - sig[-1]), sig, sig_no_w, en)
+        # print("ENERGY DIFF", (sig_no_w[-1] - sig[-1]), sig, sig_no_w, en)
         # print("STRUCTURE SIG", structure, sig, en)
         return sig
     
