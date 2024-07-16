@@ -1,13 +1,4 @@
-# TO DO
-# MOVE ROUNDING SO THAT IT IS ALL IN ONE PLACE
-#FIX FRAME CORNER ISSUE CHECKING IF IT IS A TIPPING VERTEX
-
-# BUG
-# Segment added to segments multiple times... (this is a set how is this even possible????)
-#   While computing Aquifex.aeolicus.VF5_AE000657 with pmfe using vienna code
-
 # Score and parameter vectors scores as tuples (x,y,z,w) or (a,b,c,d)
-from collections import defaultdict
 from sympy import Point, Segment2D, convex_hull, Segment, Rational, Polygon, Line, Symbol, floor, ceiling, zoo
 
 # from tippingSegment import TippingSegment
@@ -31,9 +22,10 @@ class fsBFS():
         self.nntm = ViennaInterface(pmfe, rna_file, transform=transform)
         # self.nntm = ViennaInterface(pmfe, rna_file, transform=transform)
 
-        self.pointQueue = {} #tp.center_point():tp
+        self.pointQueue = [] #tp.center_point():tp
         self.visited = {} #tp.center_point():tp
         self.segments = {} #set(score, score): [tp, tp]
+        self.signatures = {}
 
         self.pointQueueHull = None
 
@@ -45,18 +37,6 @@ class fsBFS():
         # return starting queue with boundry
         self.initialize_square() 
         print("INITIALIZED")
-        print("INITIALIZED")
-        print("INITIALIZED")
-        print("INITIALIZED")
-        print("INITIALIZED")
-        print("INITIALIZED")
-        print("INITIALIZED")
-        print("INITIALIZED")
-        print("INITIALIZED")
-        print("INITIALIZED")
-        print("INITIALIZED")
-        print("INITIALIZED")
-        print(self.pointQueue, self.visited)
 
         # print(self.tipGraph.edges(data=True))
 
@@ -67,9 +47,10 @@ class fsBFS():
             # print("VERTICES REMAINING:", len(self.pointQueue))
             # point = self.pointQueue.pop(0)
             # tipGraph["queueHull"] = convex_hull(*self.pointQueue.keys(), polygon=True)
-            self.pointQueueHull = convex_hull(*self.pointQueue.keys(), polygon=True)
-            points = self.vertices_from_geometry(self.pointQueueHull)
-            point = self.pointQueue.pop(points[len(points)//2])
+            # self.pointQueueHull = convex_hull(*self.pointQueue.keys(), polygon=True)
+
+            # points = self.vertices_from_geometry(self.pointQueueHull)
+            point = self.pointQueue.pop(0)
 
             # print("DEQUEUING POINT", (point.center()))
             # print("HULL BEFORE DEQUEUE", [tuple(p) for p in points])
@@ -84,10 +65,17 @@ class fsBFS():
                 p_center = p.center()
                 if p_center not in self.visited.keys():
                     self.visited[p_center] = p
-                    self.pointQueue[p_center] = p
+                    self.pointQueue.append(p)
 
         # print("VISITED AFTER DEQUQUE", [tuple(p) for p in self.visited])
-        print("PMFE CALLS:", self.nntm.pmfeCalls, "SUBOPT CALLS:", self.nntm.suboptCalls)
+        for p in self.visited.values():
+            for s in p.scores:
+                try:
+                    self.signatures[s].append(p.center())
+                except KeyError:
+                    self.signatures[s] = [p.center()]
+            
+        print("PMFE CALLS:", self.nntm.pmfeCalls, "TRUE PMFE CALLS:", self.nntm.truePmfeCalls, "SUBOPT CALLS:", self.nntm.suboptCalls)
 
     def initialize_square(self):
         #Possible Issue:
@@ -128,7 +116,7 @@ class fsBFS():
                     raise Exception(f"SCORES ARE THE SAME: { t.scores[(i+2)%4], t.scores[(i+3)%4]}")
 
                 self.segments[frozenset((t.scores[(i+2)%4],t.scores[(i+3)%4]))] = [t]
-                self.pointQueue[t.center()] = t
+                self.pointQueue.append(t)
                 self.visited[t.center()] = t
 
             
@@ -182,18 +170,6 @@ class fsBFS():
         grid_segs = self.find_collinear_grid_segments(p1, p2, s1, s2)
         return [(g.p1, g.p2) for g in grid_segs]
 
-
-    # def find_cyclically_ordered_signatures(self, p, eng):
-    #     subopt = self.nntm.subopt_oracle(p[0], self.bVal, p[1], self.dVal, eng=eng)
-    #     self.update_saved_signatures(subopt, p)
-    #     print("SUBOPT", subopt, tuple(p))
-
-    #     subopt_no_duplicates = {}
-    #     for s in subopt[::-1]:
-    #         subopt_no_duplicates[(s[0],s[2])] = s
-    #     print("SUBOPT", subopt_no_duplicates, tuple(p))
-    #     return self.sort_signatures([*subopt_no_duplicates.values()])
-
     def find_tp_scores(self, tp):
         # print(tp.scores)
         for i, s in enumerate(tp.scores):
@@ -202,8 +178,7 @@ class fsBFS():
                 tp.scores[i] = self.nntm.vertex_oracle(p.a, self.bVal, p.c, self.dVal)
 
     def get_search_range(self, p1, p2, s1, s2, slope, eq_a, eq_c, loc):
-                
-        # end_switch = {(0,True): min(self.cB, eq_a(self.aB), key=lambda c: (abs(p1.c - c))), (0,False): min(self.cB, eq_a(self.ab)), (1, True): min(self.cb, eq_a(self.ab)), (1, False): min(self.cB, eq_a(self.aB)), (2, True): min(self.cB, eq_a(self.aB)), (2, False): min(self.cB, eq_a(self.aB)), (3,True): min(self.cB, eq_a(self.aB)), (3, False): min(self.cB, eq_a(self.aB))}
+        # 
         if (p1.a == p2.a):
             point = (p1.a, eq_a(p1.a))
         elif (p1.c == p2.c):
@@ -244,50 +219,38 @@ class fsBFS():
             return (range(a_endpoint, start_point+1), eq_a) if a_endpoint <= start_point else (range(a_endpoint, start_point-1, -1), eq_a)
 
     def find_adjacent_from_scores(self, tp: TP, loc):
-        #loc denotes location north, west, east, south
+        #loc denotes directrion of tipping line eminating from tp: north, west, south, east
         if tp.adjacentPoints[loc] != None:
             return tp.adjacentPoints[loc]
         
         s1, s2 = tp.scores[loc],tp.scores[(loc+1)%4]
-        if frozenset((s1,s2)) in self.segments.keys():
-            # DEBUGING
-            if len(self.segments[frozenset((s1,s2))]) > 1 and tp not in self.segments[frozenset((s1,s2))]:
-                raise Exception(f"Segment with more than 2 tps: {self.segments[frozenset((s1,s2))], tp, s1, s2}")
-            #DEBUGING
-            
-            if (len(self.segments[frozenset((s1,s2))]) > 1):
-                try: 
-                    index = (self.segments[frozenset((s1,s2))].index(tp) + 1) % 2
-                except ValueError:
-                    index = 0  
-                return self.segments[frozenset((s1,s2))][index]
-            elif tp not in self.segments[frozenset((s1,s2))]:  
-                return self.segments[frozenset((s1,s2))][0]
+        seg_key = frozenset((s1,s2))
+        if seg_key in self.segments.keys():
+            if (len(self.segments[seg_key]) > 1):
+                # DEBUGING
+                if tp not in self.segments[seg_key]:
+                    raise Exception(f"Segment with more than 2 tps: {self.segments[seg_key], tp, s1, s2}")
+                #DEBUGING
+
+                # try: 
+                index = (self.segments[seg_key].index(tp) + 1) % 2
+                # except ValueError:
+                #     print(f"LENGTH OF SEGMENT AT {(s1, s2)} = {self.segments[seg_key]}")
+                #     index = 0  
+                return self.segments[seg_key][index]
+            elif tp not in self.segments[seg_key]:  
+                return self.segments[seg_key][0]
             
         p1, p2 = tp.defining_points[loc],tp.defining_points[(loc+1)%4]
 
         # print("SCORES", s1, s2)
         # print("POINTS", tp, loc, tp.adjacentPoints)
 
+        #Get function for tipping line in terms of a anc c as well as the slope
         tl_a, tl_c, slope = self.find_tipping_line(s1, s2)
-        
-        # direction_switch = {0:range(self.cB,p1.c+1,-1), 1:range(self.ab,p1.a+1), 2:range(self.cb,p1.c+1), 3:range(self.aB,p1.a+1,-1)}
-        # if abs(slope) > 1:
-        #     # positive = True if slope > 0 else False
-        #     if loc in (1,3):
-        #         if slope > 0:
-        #             direction_switch = {1:range(self.ab,p1.a+1), 3:range(self.aB,p1.a+1,-1)}
-        #         else:
-        #             dir_range = range()
-        #     else:
 
-
-        #     direction_switch = {(0,):range(self.cB,p1.c+1,-1), 1:range(self.ab,p1.a+1), 2:range(self.cb,p1.c+1), 3:range(self.aB,p1.a+1,-1)}
-        # else:
-        #     direction_switch = {0:range(self.cB,p1.c+1,-1), 1:range(self.ab,p1.a+1), 2:range(self.cb,p1.c+1), 3:range(self.aB,p1.a+1,-1)}
-        
+        #Find potential segment endpoints using wheather the segment is horizontal or vertical.
         potential_endpoints = []
-
         search_range, eq = self.get_search_range(p1, p2, s1, s2, slope, tl_a, tl_c, loc)
         # print("RANGE", search_range, loc)
         # print("POINT", tp, tp.scores)
@@ -296,8 +259,9 @@ class fsBFS():
         for n in search_range:
             potential_endpoints.append((n, eq(n)) if segment_type == "h" else (eq(n), n))
 
-        print(search_range, potential_endpoints[0],potential_endpoints[-1], sep=",")
-
+        # print(search_range, potential_endpoints[0],potential_endpoints[-1], sep=",")
+        
+        #Swap scores so you have the correct floor and ceiling score
         if loc < 2:
             s1, s2 = s2, s1
 
@@ -310,7 +274,7 @@ class fsBFS():
 
         adjacency_added = False
         for i, s in enumerate(endpoint.scores):
-            print((s, endpoint.scores[(i+1)%4]))
+            # print((s, endpoint.scores[(i+1)%4]))
             temp_scores = (s, endpoint.scores[(i+1)%4])
             if temp_scores == (s1, s2) or temp_scores == (s2, s1):
                 #Check if we are passed the frame:
@@ -336,13 +300,6 @@ class fsBFS():
         
         return endpoint
     
-    # def floor_ceil_point(point, f_point, c_point, vert):
-    #     if vert not in [0, 1]:
-    #         raise ValueError(f"vert must be 0 or 1 not {vert}")
-        
-    #     floor_point, ceil_point = floor(point), ceiling(point)
-    #     index = 0 + vert #vert is 
-
     def get_ceil_floor_pts(self, p, segment_type):
         p_f = (floor(p[0]), floor(p[1]))
         p_c = (ceiling(p[0]), ceiling(p[1]))
@@ -367,7 +324,7 @@ class fsBFS():
         # if len(a_vals) > 3 or len(c_vals) > 3:
         #     raise ValueError(f"Too many a, c values {a_vals}; {c_vals}.")
         
-        print("LENGHTS", a_vals, c_vals, len(a_vals), len(c_vals), close_points, far_points)
+        # print("LENGHTS", a_vals, c_vals, len(a_vals), len(c_vals), close_points, far_points)
         if len(a_vals) >= 3:
             return tuple(TP((a_vals[i],c_vals[0]),(a_vals[i+1],c_vals[0]),(a_vals[i+1],c_vals[1]),(a_vals[i],c_vals[1])) for i in range(len(a_vals)-1))
         if len(c_vals) >= 3:
@@ -509,11 +466,9 @@ class fsBFS():
 
     def get_adjacent(self, p):
         self.find_tp_scores(p)
-        print(p.defining_points, p.scores, p.frame_point)
-
         adjPoints = []
         if p.frame_point:
-            print(p.frame_point)
+            # print(p.frame_point)
             adjPoints.append(self.find_adjacent_from_scores(p, ((p.frame_point+1)%4)))
         else:
             for i in range(4):
@@ -521,42 +476,6 @@ class fsBFS():
                 if s1 != s2:
                     adjPoints.append(self.find_adjacent_from_scores(p, i))
 
-        # if len(sigs) < 2:
-        #     print(f"Only one unique a, c signature from subopt for {tuple(p)}.", "Signatures are:", sigs)
-        #     while len(sigs) < 2:
-        #         eng += eng
-        #         print(f"Iterating subopt until multiple signatures are found, eng={eng}")
-
-        #         sigs = self.find_cyclically_ordered_signatures(p, eng)
-
-        #     return [], []
-        # if len(sigs) == 2:
-        #     #THIS MIGHT BE UNESSASARY, need to check the output of convex_hull
-        #     #If there are only 2 signatures we want the left signature at index 0 and right at index 1. [sig_l, sig_r]
-        #     if p[0] == self.aB:
-        #         sigs.sort(key=lambda t: t[2], reverse=True)
-        #     elif p[0] == self.ab:
-        #         sigs.sort(key=lambda t: t[2])
-        #     elif p[1] == self.cB:
-        #         sigs.sort(key=lambda t: t[0])
-        #     elif p[1] == self.cb:
-        #         sigs.sort(key=lambda t: t[0], reverse=True)
-        #     else:
-        #         print(f"ERROR: NON-BOUNDRY POINT ({p}) WITH {len(sigs)} SIGNATURES")
-
-        # adjPoints = []
-        # adjSegments = []
-        # for i in range(-1, len(sigs) - 1):
-        #     if self.OBframeSignature(p, sigs[i], sigs[i + 1]):
-        #         continue
-        #     seg, point = self.construct_segment_from_point(p, sigs[i], sigs[i + 1])
-        #     adjSegments.append(seg)
-        #     adjPoints.append(point)
-
-        #     if len(sigs) == 2:
-        #         break
-                
-        print(p, adjPoints)
         return adjPoints
 
     def OBframeSignature(self, p, score_r, score_l):
