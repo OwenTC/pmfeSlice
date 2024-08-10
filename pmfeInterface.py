@@ -38,9 +38,10 @@ class pmfeInterface:
     # Internal Methods
 
     def call_pmfe(self, a, b, c, d):
-        cwd = os.getcwd()
-        os.chdir(self.pmfePath)
-        command = f"./pmfe-findmfe -a {a} -b {b} -c {c} -d {d} {self.filePath}".split()
+        # cwd = os.getcwd()
+        # os.chdir(self.pmfePath)
+        findmfe_path = os.path.join(self.pmfePath, "pmfe-findmfe")
+        command = f"{findmfe_path} -a {a} -b {b} -c {c} -d {d} {self.filePath}".split()
 
         pmfe_raw = subprocess.run(command, stdout=subprocess.PIPE, encoding='UTF-8')
         pmfe = [b for b in pmfe_raw.stdout.split()]
@@ -51,29 +52,32 @@ class pmfeInterface:
         #
         #
 
-        os.chdir(cwd)
+        # os.chdir(cwd)
         return (sig)
 
     def call_subopt(self, a, b, c, d, eng=0.03):
+        # cwd = os.getcwd()
+        # os.chdir(self.pmfePath)
         subopt_path = os.path.join(self.pmfePath, "pmfe-subopt")
         command = f"{subopt_path} -a {a} -b {b} -c {c} -d {d} --delta {eng} -C {self.filePath}".split()
 
+        print("SUBOPT"," ".join(command))
         
-        subprocess.run(command, stdout=subprocess.PIPE, encoding='UTF-8') # text=True)
+        subopt_raw = subprocess.run(command, stdout=subprocess.PIPE, encoding='UTF-8') # text=True)
         #HANDLE ERRORS
         #
         #
         #
         suboptScores = [] #tuples x,y,z,w
-        with open("out.tmp", "r") as out:
-            for line in out.readlines()[4:]:
-                line = line.split()                
-                x,y,z,w = Point(line[2], line[3], line[4], line[5])
-                suboptScores.append(Point(x,y,z,w))
+        # with open("out.tmp", "r") as out:
+        for line in subopt_raw.stdout.split("\n")[5:-1]:
+            line = line.split()                
+            x,y,z,w = Point(line[2], line[3], line[4], line[5])
+            suboptScores.append(Point(x,y,z,w))
             # print(out.readlines());
 
-        os.remove("out.tmp")
-        os.chdir(cwd)
+        # os.remove("out.tmp")
+        # os.chdir(cwd)
 
         return (suboptScores)
     
