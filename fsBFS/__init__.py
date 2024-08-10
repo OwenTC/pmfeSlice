@@ -18,8 +18,9 @@ class fsBFS():
         self.nntm = pmfeInterface(pmfe, rna_file, transform=transform)
 
         self.pointQueue = []
-        self.tippingSegments = set()
+        self.tippingSegments = {}
         self.visited = set()
+        self.point_TLs = {}
         self.signatures = defaultdict(set)
 
         self.pointQueueHull = None
@@ -42,16 +43,12 @@ class fsBFS():
             point = points[len(points)//2]
             self.pointQueue.remove(point)
 
-            adjacent_points, segments = self.get_adjacent(point)
+            adjacent_points = self.get_adjacent(point)
             
             for p in adjacent_points:
                 if p not in self.visited:
                     self.visited.add(p)
                     self.pointQueue.append(p)
-            
-            for s in segments: 
-                if s not in self.tippingSegments:
-                    self.tippingSegments.add(s)
         
         print("PMFE CALLS:", self.nntm.pmfeCalls, "SUBOPT CALLS:", self.nntm.suboptCalls)
 
@@ -94,12 +91,13 @@ class fsBFS():
             #Remove duplicates found from find_colinear_tipping_points
             if point == points[(i+1)%len(points)][0]:
                 continue
-            if i+1 < len(points):
-                self.tippingSegments.add(Segment(point, points[i+1][0]))
+            # if i+1 < len(points):
+            #     self.tippingSegments.add(Segment(point, points[i+1][0]))
             # if point in self.visited:
             #     continue
 
             # print(score, point)
+            self.update_ray_scores(point)
             self.pointQueue.append(point)
             self.visited.add(point)
 
@@ -126,41 +124,39 @@ class fsBFS():
         return self.find_collinear_tipping_points(intersection, p2, score, s2) + self.find_collinear_tipping_points(p1, intersection, s1, score)
 
     def get_adjacent(self, p):
-        subopt = self.nntm.subopt_oracle(p[0], self.bVal, p[1], self.dVal)
-        self.update_saved_signatures(subopt, p)
+        # subopt = self.nntm.subopt_oracle(p[0], self.bVal, p[1], self.dVal)
+        # self.update_saved_signatures(subopt, p)
 
-        sigs = self.sort_signatures([*set(subopt)])
+        # sigs = self.sort_signatures([*set(subopt)])
 
-        if len(sigs) < 2:
-            print("Only one unique a, c signature from subopt", sigs)
-            return [], []
-        if len(sigs) == 2:
-            #THIS MIGHT BE UNESSASARY, need to check the output of convex_hull
-            #If there are only 2 signatures we want the left signature at index 0 and right at index 1. [sig_l, sig_r]
-            if p[0] == self.aB:
-                sigs.sort(key=lambda t: t[2], reverse=True)
-            elif p[0] == self.ab:
-                sigs.sort(key=lambda t: t[2])
-            elif p[1] == self.cB:
-                sigs.sort(key=lambda t: t[0])
-            elif p[1] == self.cb:
-                sigs.sort(key=lambda t: t[0], reverse=True)
-            else:
-                print(f"ERROR: NON-BOUNDRY POINT ({p}) WITH {len(sigs)} SIGNATURES")
+        # if len(sigs) < 2:
+        #     print("Only one unique a, c signature from subopt", sigs)
+        #     return [], []
+        # if len(sigs) == 2:
+        #     #THIS MIGHT BE UNESSASARY, need to check the output of convex_hull
+        #     #If there are only 2 signatures we want the left signature at index 0 and right at index 1. [sig_l, sig_r]
+        #     if p[0] == self.aB:
+        #         sigs.sort(key=lambda t: t[2], reverse=True)
+        #     elif p[0] == self.ab:
+        #         sigs.sort(key=lambda t: t[2])
+        #     elif p[1] == self.cB:
+        #         sigs.sort(key=lambda t: t[0])
+        #     elif p[1] == self.cb:
+        #         sigs.sort(key=lambda t: t[0], reverse=True)
+        #     else:
+        #         print(f"ERROR: NON-BOUNDRY POINT ({p}) WITH {len(sigs)} SIGNATURES")
 
+        potential_segments = self.point_TLs[p]
         adjPoints = []
-        adjSegments = []
-        for i in range(-1, len(sigs) - 1):
-            if self.OBframeSignature(p, sigs[i], sigs[i + 1]):
-                continue
-            seg, point = self.construct_segment_from_point(p, sigs[i], sigs[i + 1])
-            adjSegments.append(seg)
-            adjPoints.append(point)
+        for s1, s2 in potential_segments:
+            _, end_point = self.construct_segment_from_point(p, s1, s2)
+            
+            if end_point not in self.visited:
+                self.update_ray_scores(end_point)
+            
+            adjPoints.append(end_point)
 
-            if len(sigs) == 2:
-                break
-
-        return adjPoints, adjSegments
+        return adjPoints
 
     def OBframeSignature(self, p, score_r, score_l):
         if (p[0] not in [self.ab, self.aB]) and (p[1] not in [self.cb, self.cB]):
@@ -193,6 +189,50 @@ class fsBFS():
 
         return([pointDict[v] for v in hull.vertices])
     
+    #Add the 
+    def update_ray_scores(self, p):
+        subopt = self.nntm.subopt_oracle(p[0], self.bVal, p[1], self.dVal)
+        self.update_saved_signatures(subopt, p)
+        sorted_sigs = self.sort_signatures([*set(subopt)])
+        # self.point_TLs[p] = sorted_sigs
+        if len(sorted_sigs) < 2:
+            print("ERROR: Only one unique a, c signature from subopt", sorted_sigs)
+            exit()
+        if len(sorted_sigs) == 2:
+            #If there are only 2 signatures we want the left signature at index 0 and right at index 1. [sig_l, sig_r]
+            if p[0] == self.aB:
+                sorted_sigs.sort(key=lambda t: t[2], reverse=True)
+            elif p[0] == self.ab:
+                sorted_sigs.sort(key=lambda t: t[2])
+            elif p[1] == self.cB:
+                sorted_sigs.sort(key=lambda t: t[0])
+            elif p[1] == self.cb:
+                sorted_sigs.sort(key=lambda t: t[0], reverse=True)
+            else:
+                print(f"ERROR: NON-BOUNDRY POINT ({p}) WITH {len(sorted_sigs)} SIGNATURES")
+
+        for i in range(-1, len(sorted_sigs) - 1):
+            sig_pair = (sorted_sigs[i], sorted_sigs[i + 1])
+            if self.OBframeSignature(p, *sig_pair):
+                continue
+            try:
+                self.point_TLs[p].append(sig_pair)
+            except KeyError:
+                self.point_TLs[p] = [sig_pair]
+
+            sig_set = frozenset(s[::2] for s in sig_pair)
+            try:
+                if len(self.tippingSegments[sig_set]) == 1:
+                    self.tippingSegments[sig_set] += (p,)
+                elif len(self.tippingSegments[sig_set]) == 2:
+                    print(f"More than 2 TPs {self.tippingSegments[sig_pair]} for a TL: {sig_pair} ")
+                    exit()
+            except KeyError:
+                self.tippingSegments[sig_set] = (p,)
+
+            if len(sorted_sigs) == 2:
+                break
+
     def update_saved_signatures(self, sigs, p):
         for s in sigs:
             self.signatures[s].add(p)

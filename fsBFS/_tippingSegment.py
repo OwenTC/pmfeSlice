@@ -3,14 +3,21 @@ from sympy import Point, Line, Segment, Line2D, Segment2D, Point2D, atan, Ray, z
 def construct_segment_from_point(self, point, score_r, score_l):
     ray = self.find_segment_direction(point, score_r, score_l)
 
-    # Check if segment has already been found in ray
-    for s in self.tippingSegments:
-        if (s.p1 == point or s.p2 == point) and ray.contains(s):
-            endpoint = s.p1
-            if endpoint == point:
-                endpoint = s.p2
-            return s, endpoint
+    # # Check if segment has already been found in ray
+    # for s in self.tippingSegments:
+    #     if (s.p1 == point or s.p2 == point) and ray.contains(s):
+    #         endpoint = s.p1
+    #         if endpoint == point:
+    #             endpoint = s.p2
+    #         return s, endpoint
 
+    sig_set = frozenset((score_r[::2], score_l[::2]))
+    if len(self.tippingSegments[sig_set]) == 2:
+        endpoint = self.tippingSegments[sig_set][0]
+        if endpoint == point:
+            endpoint = self.tippingSegments[sig_set][1]
+        return Segment(point, endpoint), endpoint
+    
     #Truncate ray using convex hull
     # queue_hull = convex_hull(*self.pointQueue, point, polygon=True)
     ray_hull_intersection = [p for p in ray.intersection(self.pointQueueHull) if p != point][0]

@@ -18,5 +18,7 @@ def save_data(self, ploygonFile : str = "polygons.txt", visitedFile : str = "vis
             f.write(f"{(v[0],v[1])}\n")
     
     with open(segmentFile, "w") as f:
-        for s in self.tippingSegments:
-            f.write(f"{(s.p1[0],s.p1[1]), (s.p2[0],s.p2[1])}\n")
+        for s, p in self.tippingSegments.items():
+            s1, s2 = s
+            p1, p2 = p
+            f.write(f"{s1},{s2}:{(p1[0],p1[1]), (p2[0],p2[1])}\n")
