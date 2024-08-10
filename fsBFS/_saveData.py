@@ -1,5 +1,4 @@
 from sympy import convex_hull
-import json
 
 def save_data(self, ploygonFile : str = "polygons.txt", visitedFile : str = "visited.txt", segmentFile : str = "segments.txt"):
     # Construct Polygons
@@ -21,13 +20,3 @@ def save_data(self, ploygonFile : str = "polygons.txt", visitedFile : str = "vis
     with open(segmentFile, "w") as f:
         for s in self.tippingSegments:
             f.write(f"{(s.p1[0],s.p1[1]), (s.p2[0],s.p2[1])}\n")
-
-def save_signatures(self, save_file="temp_sigs.json"):
-    flattened_sigs = {str(tuple(k)):[tuple(int(y) for y in x) for x in v] for k,v in self.signatures.items()}
-    with open(save_file, "w") as f:
-        json.dump(flattened_sigs,f)
-
-def save_segments(self, save_file="temp_segments.json"):
-    flattened_segments = [(tuple(int(x) for x in s.p1), tuple(int(x) for x in s.p2)) for s in self.tippingSegments]
-    with open(save_file, "w") as f:
-        json.dump(flattened_segments,f)

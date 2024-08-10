@@ -5,7 +5,6 @@ from sympy import Point, Segment2D, convex_hull, Segment, Rational, Polygon
 from random import randint
 
 from pmfeInterface import pmfeInterface
-from viennaInterface import ViennaInterface
 
 class fsBFS():
     def __init__(self, pmfe, rna_file, transform = True, bVal : Rational = 0, aB : Rational = 50, cB : Rational = 50, ab : Rational = -50, cb : Rational = -50):
@@ -16,8 +15,7 @@ class fsBFS():
         self.aB = aB
         self.cB = cB
 
-        # self.nntm = pmfeInterface(pmfe, rna_file, transform=transform)
-        self.nntm = ViennaInterface(pmfe, rna_file, transform=transform)
+        self.nntm = pmfeInterface(pmfe, rna_file, transform=transform)
 
         self.pointQueue = []
         self.tippingSegments = set()
@@ -27,30 +25,16 @@ class fsBFS():
         self.pointQueueHull = None
 
     from ._tippingSegment import construct_segment_from_point, find_tipping_line_intersection, find_segment_endpoint, shorten_segment, find_segment_direction, distance_to_intersection, shorten_segment_2
-    from ._saveData import save_data, save_signatures, save_segments
+    from ._saveData import save_data
     
     def build(self):
         # Initialize
         # return starting queue with boundry
-        self.initialize_square() 
-        print("INITIALIZED")
-        print("INITIALIZED")  
-        print("INITIALIZED")  
-        print("INITIALIZED")  
-        print("INITIALIZED")  
-        print("INITIALIZED")  
-        print("INITIALIZED")  
-        print("INITIALIZED")  
-        print("INITIALIZED")  
-        print("INITIALIZED")  
-        print("INITIALIZED")  
-        print("INITIALIZED")  
-
+        self.initialize_square()   
 
         # print(self.pointQueue)
         # print(self.tippingSegments)
         while len(self.pointQueue) > 0:
-            # print("POINT QUEUE", [(p[0],p[1]) for p in self.pointQueueHull])
             # print("VERTICES REMAINING:", len(self.pointQueue))
             # point = self.pointQueue.pop(0)
             self.pointQueueHull = convex_hull(*self.pointQueue, polygon=True)
@@ -58,17 +42,9 @@ class fsBFS():
             point = points[len(points)//2]
             self.pointQueue.remove(point)
 
-            print("DEQUEUING POINT", (point[0],point[1]))
-            print("HULL BEFORE DEQUEUE", [tuple(p) for p in points])
-            print("QUEUE AFTER DEQUQUE", [tuple(p) for p in self.pointQueue])
-            print("VISITED AFTER DEQUQUE", [tuple(p) for p in self.visited])
-            self.save_signatures()
-            self.save_segments()
-
             adjacent_points, segments = self.get_adjacent(point)
             
             for p in adjacent_points:
-                p = Point(int(round(p[0],0)), int(round(p[1],0)))
                 if p not in self.visited:
                     self.visited.add(p)
                     self.pointQueue.append(p)
@@ -86,22 +62,14 @@ class fsBFS():
         #Initialize points and scores
         p1, p2, p3, p4 = Point(self.aB, self.cB), Point(self.ab, self.cB), Point(self.ab, self.cb), Point(self.aB, self.cb)
         s1_sigs = self.nntm.subopt_oracle(p1[0], self.bVal, p1[1], self.dVal)
-        print("S1_SIGS", s1_sigs, p1[0], self.bVal, p1[1], self.dVal)
         s2_sigs = self.nntm.subopt_oracle(p2[0], self.bVal, p2[1], self.dVal)
-        print("S2_SIGS", s2_sigs)
         s3_sigs = self.nntm.subopt_oracle(p3[0], self.bVal, p3[1], self.dVal)
-        print("S3_SIGS", s3_sigs)
         s4_sigs = self.nntm.subopt_oracle(p4[0], self.bVal, p4[1], self.dVal)
-        print("S4_SIGS", s4_sigs)
 
         s1 = self.nntm.vertex_oracle(p1[0], self.bVal, p1[1], self.dVal)
-        print("S1_SIG", s1)
         s2 = self.nntm.vertex_oracle(p2[0], self.bVal, p2[1], self.dVal)
-        print("S2_SIG", s2)
         s3 = self.nntm.vertex_oracle(p3[0], self.bVal, p3[1], self.dVal)
-        print("S3_SIG", s3)
         s4 = self.nntm.vertex_oracle(p4[0], self.bVal, p4[1], self.dVal)
-        print("S4_SIG", s4)
 
         #Set p1, p2, p3, p4 to visited
         self.visited.add(p1)
@@ -116,32 +84,9 @@ class fsBFS():
         self.update_saved_signatures(s4_sigs, p4)
 
         #Create queue of points on the frame
-        print("FRAME1")
-        print("FRAME1")
-        print("FRAME1")
-        print("FRAME1")
-        print("FRAME1")
         self.add_frame_point_to_queue(self.find_collinear_tipping_points(p1, p2, s1, s2))
-        print("FRAME2")
-        print("FRAME2")
-        print("FRAME2")
-        print("FRAME2")
-        print("FRAME2")
-        print("FRAME2")
         self.add_frame_point_to_queue(self.find_collinear_tipping_points(p2, p3, s2, s3))
-        print("FRAME3")
-        print("FRAME3")
-        print("FRAME3")
-        print("FRAME3")
-        print("FRAME3")
-        print("FRAME3")
         self.add_frame_point_to_queue(self.find_collinear_tipping_points(p3, p4, s3, s4))
-        print("FRAME4")
-        print("FRAME4")
-        print("FRAME4")
-        print("FRAME4")
-        print("FRAME4")
-        print("FRAME4")
         self.add_frame_point_to_queue(self.find_collinear_tipping_points(p4, p1, s4, s1))
 
     def add_frame_point_to_queue(self, points):
@@ -149,8 +94,6 @@ class fsBFS():
             #Remove duplicates found from find_colinear_tipping_points
             if point == points[(i+1)%len(points)][0]:
                 continue
-
-            point = Point(int(round(point[0],0)), int(round(point[1],0)))
             if i+1 < len(points):
                 self.tippingSegments.add(Segment(point, points[i+1][0]))
             # if point in self.visited:
@@ -167,18 +110,17 @@ class fsBFS():
 
         if intersection == None:
             return []
-        if intersection.distance(p1) < 0.01:
+        if intersection == p1:
             return [(intersection, s1)]
-        if intersection.distance(p2) < 0.01:
+        if intersection == p2:
             return [(intersection, s2)]
 
         score = self.nntm.vertex_oracle(intersection[0], self.bVal, intersection[1], self.dVal)
-        # print(p1, p2, s1, s2, intersection, score)
 
-        if s1[:-1] == score[:-1]:
+        if s1 == score:
             return self.find_collinear_tipping_points(intersection, p2, score, s2) + [(intersection, score)]
         
-        if s2[:-1] == score[:-1]: 
+        if s2 == score: 
             return self.find_collinear_tipping_points(p1, intersection, s1, score) + [(intersection, score)]
         
         return self.find_collinear_tipping_points(intersection, p2, score, s2) + self.find_collinear_tipping_points(p1, intersection, s1, score)
@@ -187,11 +129,7 @@ class fsBFS():
         subopt = self.nntm.subopt_oracle(p[0], self.bVal, p[1], self.dVal)
         self.update_saved_signatures(subopt, p)
 
-        subopt_no_duplicates = {}
-        for s in subopt[::-1]:
-            subopt_no_duplicates[(s[0],s[2])] = s
-
-        sigs = self.sort_signatures([*subopt_no_duplicates.values()])
+        sigs = self.sort_signatures([*set(subopt)])
 
         if len(sigs) < 2:
             print("Only one unique a, c signature from subopt", sigs)
