@@ -1,11 +1,3 @@
-# TO DO
-# MOVE ROUNDING SO THAT IT IS ALL IN ONE PLACE
-#FIX FRAME CORNER ISSUE CHECKING IF IT IS A TIPPING VERTEX
-
-# BUG
-# Segment added to segments multiple times... (this is a set how is this even possible????)
-#   While computing Aquifex.aeolicus.VF5_AE000657 with pmfe using vienna code
-
 # Score and parameter vectors scores as tuples (x,y,z,w) or (a,b,c,d)
 from collections import defaultdict
 from sympy import Point, Segment2D, convex_hull, Segment, Rational, Polygon
@@ -24,8 +16,8 @@ class fsBFS():
         self.aB = aB
         self.cB = cB
 
-        self.nntm = pmfeInterface(pmfe, rna_file, transform=transform)
-        # self.nntm = ViennaInterface(pmfe, rna_file, transform=transform)
+        # self.nntm = pmfeInterface(pmfe, rna_file, transform=transform)
+        self.nntm = ViennaInterface(pmfe, rna_file, transform=transform)
 
         self.pointQueue = []
         self.tippingSegments = set()
@@ -34,7 +26,7 @@ class fsBFS():
 
         self.pointQueueHull = None
 
-    from ._tippingSegment import construct_segment_from_point, find_tipping_line_intersection, find_segment_endpoint, shorten_segment, find_segment_direction, distance_to_intersection, shorten_segment_2, find_ray_hull_intersection
+    from ._tippingSegment import construct_segment_from_point, find_tipping_line_intersection, find_segment_endpoint, shorten_segment, find_segment_direction, distance_to_intersection, shorten_segment_2
     from ._saveData import save_data, save_signatures, save_segments
     
     def build(self):
@@ -76,7 +68,7 @@ class fsBFS():
             adjacent_points, segments = self.get_adjacent(point)
             
             for p in adjacent_points:
-                p = Point((round(p[0],2)), (round(p[1],2)))
+                p = Point(int(round(p[0],0)), int(round(p[1],0)))
                 if p not in self.visited:
                     self.visited.add(p)
                     self.pointQueue.append(p)
@@ -158,8 +150,9 @@ class fsBFS():
             if point == points[(i+1)%len(points)][0]:
                 continue
 
-            point = Point((round(point[0],2)), (round(point[1],2)))
+            point = Point(int(round(point[0],0)), int(round(point[1],0)))
             if i+1 < len(points):
+                self.tippingSegments.add(Segment(point, points[i+1][0]))
             # if point in self.visited:
             #     continue
 
@@ -190,28 +183,18 @@ class fsBFS():
         
         return self.find_collinear_tipping_points(intersection, p2, score, s2) + self.find_collinear_tipping_points(p1, intersection, s1, score)
 
-    def find_cyclically_ordered_signatures(self, p, eng):
-        subopt = self.nntm.subopt_oracle(p[0], self.bVal, p[1], self.dVal, eng=eng)
+    def get_adjacent(self, p):
+        subopt = self.nntm.subopt_oracle(p[0], self.bVal, p[1], self.dVal)
         self.update_saved_signatures(subopt, p)
-        print("SUBOPT", subopt, tuple(p))
 
         subopt_no_duplicates = {}
         for s in subopt[::-1]:
             subopt_no_duplicates[(s[0],s[2])] = s
-        print("SUBOPT", subopt_no_duplicates, tuple(p))
-        return self.sort_signatures([*subopt_no_duplicates.values()])
 
-    def get_adjacent(self, p, eng=0.03):
-        sigs = self.find_cyclically_ordered_signatures(p, eng)
+        sigs = self.sort_signatures([*subopt_no_duplicates.values()])
 
         if len(sigs) < 2:
-            print(f"Only one unique a, c signature from subopt for {tuple(p)}.", "Signatures are:", sigs)
-            while len(sigs) < 2:
-                eng += eng
-                print(f"Iterating subopt until multiple signatures are found, eng={eng}")
-
-                sigs = self.find_cyclically_ordered_signatures(p, eng)
-
+            print("Only one unique a, c signature from subopt", sigs)
             return [], []
         if len(sigs) == 2:
             #THIS MIGHT BE UNESSASARY, need to check the output of convex_hull
@@ -270,7 +253,7 @@ class fsBFS():
         if type(hull) is Segment2D:
             return [pointDict[hull.p1], pointDict[hull.p2]]
 
-        return([pointDict[v] for v in self.vertices_from_geometry(hull)])
+        return([pointDict[v] for v in hull.vertices])
     
     def update_saved_signatures(self, sigs, p):
         for s in sigs:

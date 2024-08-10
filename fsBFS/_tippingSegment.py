@@ -1,70 +1,31 @@
 from sympy import Point, Line, Segment, Line2D, Segment2D, Point2D, atan, Ray, zoo, pi, Polygon, convex_hull
 
 _debug = True
-_rounding = 2
-
-def debug_print(*s):
-    if _debug:
-        print(*s)
 
 def construct_segment_from_point(self, point, score_r, score_l):
     ray = self.find_segment_direction(point, score_r, score_l)
-    debug_print("RAY", ray.p1, ray.p2, score_r, score_l)
+    print(ray.p1, ray.p2, score_r, score_l)
 
     # Check if segment has already been found in ray
     for s in self.tippingSegments:
-                # if (s.p1 == point or s.p2 == point) and ray.contains(s):
-        if (s.p2 == point and (s.p1.distance(ray) < 0.02 or abs(pi - s.angle_between(ray)) < 0.01)):# abs(pi - s.angle_between(ray)) < 0.01):# ( ray.distance(s.p1) < 0.1): #< 0.1 contains(s)
+        if (s.p1 == point or s.p2 == point) and ray.contains(s):
             endpoint = s.p1
             if endpoint == point:
-                debug_print("BAD CASE")
                 endpoint = s.p2
-            debug_print("SKIPPING SEGMENT", s)
             return s, endpoint
 
     #Truncate ray using convex hull
     # queue_hull = convex_hull(*self.pointQueue, point, polygon=True)
-    ray_hull_intersection = self.find_ray_hull_intersection(ray, point)
-    
-    # [p for p in ray.intersection(self.pointQueueHull.scale(*(1.01,)*2)) if p != point][0]
-    # if type(ray_hull_intersection) == Segment2D: #Occurs when tipping segment is an edge of the convex hull. 
-    #     ray_hull_intersection = ray_hull_intersection.p2 if ray_hull_intersection.p2 != point else ray_hull_intersection.p1
+    ray_hull_intersection = [p for p in ray.intersection(self.pointQueueHull) if p != point][0]
+    if type(ray_hull_intersection) == Segment2D: #Occurs when tipping segment is an edge of the convex hull. 
+        ray_hull_intersection = ray_hull_intersection.p2 if ray_hull_intersection.p2 != point else ray_hull_intersection.p1
 
     #Segment the ray to find tipping point
     seg_hull_score = self.nntm.vertex_oracle(ray_hull_intersection[0], self.bVal, ray_hull_intersection[1], self.dVal)
     endpoint = self.find_segment_endpoint(point, score_l, ray_hull_intersection, seg_hull_score, score_r)
-
-    #Check if endpoint is within roudning error of visited point
-    for p in self.visited:
-        if p.taxicab_distance(endpoint) < 5*(10**-_rounding):
-            endpoint = p
-
-    endpoint = Point(round(endpoint[0],_rounding), round(endpoint[1],_rounding))
+    endpoint = Point(int(round(endpoint[0])), int(round(endpoint[1])))
     s = Segment(point, endpoint)
     return s, endpoint
-
-def find_ray_hull_intersection(self, ray, point):
-    ray_hull_intersections = [p for p in ray.intersection(self.pointQueueHull) if p != point]
-    
-    if len(ray_hull_intersections) == 0:
-        for i in range(len(self.pointQueueHull.vertices)):
-            p1 = self.pointQueueHull.vertices[i]
-            p2 = self.pointQueueHull.vertices[(i+1)%len(self.pointQueueHull.vertices)]
-            #Sort the points so that we construct the segment with acute angle to ray
-            sorted_points = sorted((p1,p2), key=lambda p: p.taxicab_distance(point))
-            segment = Segment(sorted_points[0], sorted_points[1])
-
-            if (segment.distance(ray.p1) < 0.01 and abs(ray.angle_between(segment)) < .1):
-                debug_print("CLOSE SEGMENT", segment, p1, p2, sorted_points, segment.p2)
-                ray_hull_intersections = [segment.p2]
-                break
-                
-    ray_hull_intersection = ray_hull_intersections[0]
-    if type(ray_hull_intersection) == Segment2D: #Occurs when tipping segment is an edge of the convex hull. 
-        ray_hull_intersection = ray_hull_intersection.p2 if ray_hull_intersection.p2 != point else ray_hull_intersection.p1
-    
-    return ray_hull_intersection
-
 
 # Finds the direction of a segment given its left and right score vector.
 # Returns a ray in the correct direction.
@@ -130,12 +91,12 @@ def find_segment_direction(self, point, score_r, score_l):
 
 # Find the endpoint of segmnent given its base vertex
 def find_segment_endpoint(self, basePoint, baseScore, endPoint, endScore, altScore):
-    # debug_print("P1", basePoint, baseScore, endPoint, endScore, altScore)
+    # print("P1", basePoint, baseScore, endPoint, endScore, altScore)
     intersection, _ = self.find_tipping_line_intersection(basePoint, endPoint, baseScore, endScore)
 
-    # debug_print("INTERSECTION", basePoint, baseScore, endPoint, endScore, altScore, intersection)
+    # print("INTERSECTION", basePoint, baseScore, endPoint, endScore, altScore, intersection)
     if type(intersection) == Line2D:
-        # debug_print("INTERSECTION", basePoint, baseScore, endPoint, endScore, altScore, intersection)
+        print("INTERSECTION", basePoint, baseScore, endPoint, endScore, altScore, intersection)
         intersection, _ = self.find_tipping_line_intersection(basePoint, endPoint, altScore, endScore)
     
     if intersection == None or type(intersection) == Line2D or (intersection.distance(endPoint) < 0.01):
@@ -200,9 +161,10 @@ def find_tipping_line_intersection(self, p1, p2, s1, s2):
     k1 = self.bVal * y1 + self.dVal * w1
     k2 = self.bVal * y2 + self.dVal * w2
 
-    # debug_print(f"{(p1[0], p1[1])}, {(p2[0], p2[1])}\n({x1 - x2})/({z2 - z1})x+({k1}-{k2})/({z2-z1})") #TIPPING LINE BETWEEN {(p1[0], p1[1])}, {(p2[0], p2[1])}: 
-        # debug_print(f"SCORES: {[s for s in s1]}, {[s for s in s2]}")
-        # debug_print(f"PARAMS: {[s for s in p1]}, {[s for s in p2]}")
+    if (_debug):
+        print(f"{(p1[0], p1[1])}, {(p2[0], p2[1])}\n({x1 - x2})/({z2 - z1})x+({k1}-{k2})/({z2-z1})") #TIPPING LINE BETWEEN {(p1[0], p1[1])}, {(p2[0], p2[1])}: 
+        # print(f"SCORES: {[s for s in s1]}, {[s for s in s2]}")
+        # print(f"PARAMS: {[s for s in p1]}, {[s for s in p2]}")
 
     if ((z2 - z1) == 0 and (x1-x2) == 0):
         return None, None
@@ -226,9 +188,9 @@ def find_tipping_line_intersection(self, p1, p2, s1, s2):
     # if tipLine.is_parallel(paramLine):
     #     return paramLine, (point1, point2)
     if tipLine.smallest_angle_between(paramLine) < 0.1:
-        debug_print("SLOPES", tipLine.slope, paramLine.slope)
+        print("SLOPES", tipLine.slope, paramLine.slope)
         return paramLine, (point1, point2)
     
     interPoint = Line(point1, point2).intersection(paramLine)[0]
-    # debug_print("INTERPOINT", tuple(interPoint), tuple(p1), tuple(p2), sep=", ")
+    # print("INTERPOINT", tuple(interPoint), tuple(p1), tuple(p2), sep=", ")
     return interPoint, (point1, point2)

@@ -2,7 +2,6 @@ from fsBFS import fsBFS as FanSlice
 from sympy import Rational
 import argparse
 from os import path
-from sympy import *
 
 parser = argparse.ArgumentParser(description="Computes Slice of Normal Fan")
 parser.add_argument("fasta", nargs=1, help="fasta file")
@@ -21,15 +20,7 @@ print(args)
 
 fan = FanSlice(args.pmfe_path, args.fasta[0], bVal = args.b_val, transform=args.transform, aB=args.A, cB=args.C, ab=args.a, cb=args.c)
 
-# print(path.basename(args.fasta[0]))
-
-
-# fan.pointQueueHull = convex_hull((-50, 47/5), (50, -321/10), (1669/100, -97/10), (39/5, -23/5), (-51/10, 5/2), (-50, 187/10))
-
-# ray = Ray(Point2D(39/5, -23/5),Point2D(44/5, -51/10))
-# point = Point2D(39/5, -23/5)
-
-# print(fan.find_ray_hull_intersection(ray, point))
+print(path.basename(args.fasta[0]))
 
 fan.build()
 fan.save_data()

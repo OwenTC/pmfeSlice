@@ -28,6 +28,6 @@ def save_signatures(self, save_file="temp_sigs.json"):
         json.dump(flattened_sigs,f)
 
 def save_segments(self, save_file="temp_segments.json"):
-    flattened_segments = [(tuple(float(round(x, 2)) for x in s.p1), tuple(float(round(x, 2)) for x in s.p2)) for s in self.tippingSegments]
+    flattened_segments = [(tuple(int(x) for x in s.p1), tuple(int(x) for x in s.p2)) for s in self.tippingSegments]
     with open(save_file, "w") as f:
         json.dump(flattened_segments,f)
