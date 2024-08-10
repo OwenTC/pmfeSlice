@@ -30,6 +30,8 @@
 *.exe
 *.out
 *.app
+*.sh
+*.sage.py
 
 
 # Data outputs
@@ -38,6 +40,6 @@
 *.png
 *.json
 *.fasta
-
-
+*.svg
+*.tmp
 __pycache__

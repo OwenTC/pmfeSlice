@@ -16,21 +16,33 @@ class ViennaInterface:
         self.transform = transform
         self.pmfeCalls = 0
         self.suboptCalls = 0
+        self.truePmfeCalls = 0 #Calls without lookup
 
         #Setup Vienna
         self.md = RNA.md()
         self.md.uniq_ML = 1
         self.md.compute_bpp = 0
         self.fc = RNA.fold_compound(self.sequence_from_fasta(), self.md)
+        
+        #Save computed points
+        self.computed = {} #param:sig
 
     #Calls pmfe with params a, b, c, d
     def vertex_oracle(self, a: Rational, b: Rational, c: Rational, d: Rational):
         self.pmfeCalls += 1
-        if self.transform:
-            a = a-(c*3)
-            return self.transform_z(self.get_mfe(a,b,c,d)) #self.transform_z
+        try:
+            return self.computed[(a, b, c, d)]
+        except KeyError:
+            self.truePmfeCalls += 1
+            if self.transform:
+                a = a-(c*3)
+                mfe = self.transform_z(self.get_mfe(a,b,c,d))
+                self.computed[(a, b, c, d)] = mfe
+                return mfe #self.transform_z
 
-        return self.get_mfe(a,b,c,d)
+            mfe = self.get_mfe(a,b,c,d)
+            self.computed[(a, b, c, d)] = mfe
+            return mfe
 
     #Calls subopt with params a, b, c, d
     def subopt_oracle(self, a: Rational, b: Rational, c: Rational, d: Rational, eng=15):
@@ -122,7 +134,7 @@ class ViennaInterface:
         # compute MFE
         # print(self.fc.subopt(0))
         #120 here is tunned and it seems like it works
-        sigs_no_w = ((self.scored_structure(s.structure), s.energy) for s in self.fc.subopt(eng))
+        sigs_no_w = ((tuple(RNAStructure(s.structure).score_structure()), s.energy) for s in self.fc.subopt(eng))
         subopt = [s[:3] + (self.compute_w(s, (a,b,c,d),en),) for s, en in sigs_no_w]
         # subopt = [s for s,_ in sigs_no_w]
 

@@ -12,10 +12,11 @@ parser.add_argument("-C", type=Rational, default=50, help="Upper c bound")
 parser.add_argument("-A", type=Rational, default=50, help="Upper a bound")
 parser.add_argument("-c", type=Rational, default=-50, help="Lower c bound")
 parser.add_argument("-a", type=Rational, default=-50, help="Lower a bound")
+parser.add_argument("--SPF", type=str, default="polygons.py", help="Polygons file to save data.")
 parser.add_argument("-O", "--transform", action="store_true", help="Transform Output")
 
 args = parser.parse_args()
-print(args)
+# print(args)
 
 # (109/10, -5),(64/5, -119/20),(49/2, -119/20),(207/10, -5)
 
@@ -32,4 +33,4 @@ fan = FanSlice(args.pmfe_path, args.fasta[0], bVal = args.b_val, transform=args.
 # print(fan.find_ray_hull_intersection(ray, point))
 
 fan.build()
-fan.save_data()
+fan.save_data(ploygonFile=args.SPF)

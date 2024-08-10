@@ -1,0 +1,9 @@
+O.nivara: 
+
+Time: 476.70s
+find-mfe calls: 1850
+regions-found: 30 (total regions ~34)
+tipping-points computed: 2633
+real tipping-points: 871
+
+Computation is computing squares of increasing sizes from side length 2 to side length 100, increment of 2.

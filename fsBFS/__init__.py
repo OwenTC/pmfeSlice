@@ -5,10 +5,15 @@ from sympy import Point, Segment2D, convex_hull, Segment, Rational, Polygon, Lin
 # from random import randint
 import networkx as nx
 
+import numpy as np
+
 from pmfeInterface import pmfeInterface
 from viennaInterface import ViennaInterface
 from tippingPoint import TippingPoint as TP
 from tippingPoint import GridSegment as GS
+
+#For testing
+from random import randint
 
 class fsBFS():
     def __init__(self, pmfe, rna_file, transform = True, bVal : Rational = 0, aB : Rational = 50, cB : Rational = 50, ab : Rational = -50, cb : Rational = -50):
@@ -29,14 +34,14 @@ class fsBFS():
 
         self.pointQueueHull = None
 
-    from ._tippingSegment import construct_segment_from_point, find_tipping_line_intersection, find_segment_endpoint, shorten_segment, find_segment_direction, distance_to_intersection, shorten_segment_2, find_ray_hull_intersection, find_tipping_line
+    from ._tippingSegment import construct_segment_from_point, find_tipping_line_intersection, find_segment_endpoint, shorten_segment, distance_to_intersection, find_segment_direction, shorten_segment_2, find_ray_hull_intersection, find_tipping_line
     from ._saveData import save_data, save_signatures, save_segments
     
     def build(self):
         # Initialize
         # return starting queue with boundry
         self.initialize_square() 
-        print("INITIALIZED")
+        # print("INITIALIZED")
 
         # print(self.tipGraph.edges(data=True))
 
@@ -50,7 +55,8 @@ class fsBFS():
             # self.pointQueueHull = convex_hull(*self.pointQueue.keys(), polygon=True)
 
             # points = self.vertices_from_geometry(self.pointQueueHull)
-            point = self.pointQueue.pop(0)
+            index = randint(0,len(self.pointQueue)-1)
+            point = self.pointQueue.pop(index)
 
             # print("DEQUEUING POINT", (point.center()))
             # print("HULL BEFORE DEQUEUE", [tuple(p) for p in points])
@@ -99,7 +105,7 @@ class fsBFS():
         
         # colinear_tps = []
         for i in range(4):
-            print(f"FRAME{i}")
+            # print(f"FRAME{i}")
             p1 = corners[i]
             p2 = corners[(i+1)%4]
             grid_segments = self.find_collinear_grid_segments(p1, p2, score_corners[i], score_corners[(i+1)%4])
@@ -177,6 +183,23 @@ class fsBFS():
                 p = tp.defining_points[i]
                 tp.scores[i] = self.nntm.vertex_oracle(p.a, self.bVal, p.c, self.dVal)
 
+
+    # # Finds the direction of a segment given its left and right score vector.
+    # # Returns a ray in the correct direction.
+    # def new_find_segment_direction(self, point, score_r, score_l):
+    #     #Variables for tipping line equation
+    #     dx = score_r[0] - score_l[0]
+    #     dz = score_r[2] - score_l[2]
+
+    #     slope = (-dx)/dz if dz != 0 else (zoo)
+    #     angle = atan(slope) if slope != zoo else pi/2
+    #     if dz < 0 or (dz == 0 and dx > 0): 
+    #         angle += pi
+        
+    #     return Ray(point, angle=angle)
+
+
+    #Returns range (in a or c) of all the gridlines the ray will cross [endpoint, tp]
     def get_search_range(self, p1, p2, s1, s2, slope, eq_a, eq_c, loc):
         # 
         if (p1.a == p2.a):
@@ -232,19 +255,12 @@ class fsBFS():
                     raise Exception(f"Segment with more than 2 tps: {self.segments[seg_key], tp, s1, s2}")
                 #DEBUGING
 
-                # try: 
                 index = (self.segments[seg_key].index(tp) + 1) % 2
-                # except ValueError:
-                #     print(f"LENGTH OF SEGMENT AT {(s1, s2)} = {self.segments[seg_key]}")
-                #     index = 0  
                 return self.segments[seg_key][index]
             elif tp not in self.segments[seg_key]:  
                 return self.segments[seg_key][0]
             
         p1, p2 = tp.defining_points[loc],tp.defining_points[(loc+1)%4]
-
-        # print("SCORES", s1, s2)
-        # print("POINTS", tp, loc, tp.adjacentPoints)
 
         #Get function for tipping line in terms of a anc c as well as the slope
         tl_a, tl_c, slope = self.find_tipping_line(s1, s2)
@@ -252,23 +268,15 @@ class fsBFS():
         #Find potential segment endpoints using wheather the segment is horizontal or vertical.
         potential_endpoints = []
         search_range, eq = self.get_search_range(p1, p2, s1, s2, slope, tl_a, tl_c, loc)
-        # print("RANGE", search_range, loc)
-        # print("POINT", tp, tp.scores)
-        # eq = tl_a if (loc % 2) else tl_c
         segment_type = "v" if (slope == zoo or abs(slope) > 1) else "h"
         for n in search_range:
             potential_endpoints.append((n, eq(n)) if segment_type == "h" else (eq(n), n))
-
-        # print(search_range, potential_endpoints[0],potential_endpoints[-1], sep=",")
         
         #Swap scores so you have the correct floor and ceiling score
         if loc < 2:
             s1, s2 = s2, s1
 
         endpoint = self.find_segment_endpoint(potential_endpoints, s1, s2, tp, segment_type)
-        # print("SCORES", s2, s1)
-        # adj_edge = min() = [Line(*(tuple(p) for p in end_point.defining_points)]
-
         endpoint.add_scores((self.nntm.vertex_oracle(p.a, self.bVal, p.c, self.dVal) for p in endpoint.defining_points))
         # print("ENDPOINT", endpoint, endpoint.center(), endpoint.scores)
 
@@ -371,6 +379,7 @@ class fsBFS():
         mid_p = ((p1[0]+p2[0])/2,(p1[1]+p2[1])/2)
         
         index = 1 if segment_type == "h" else 0
+        #If slope is 1????? 
         if (floor(p1[index]) != floor(p2[index])) or (ceiling(p1[index]) != ceiling(p2[index])):
             # print("POINT", p1, p2)
             index = 1 if segment_type == "h" else 0
