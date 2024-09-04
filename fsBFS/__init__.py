@@ -49,7 +49,7 @@ class fsBFS():
                 if p not in self.visited:
                     self.visited.add(p)
                     self.pointQueue.append(p)
-        
+
         print("PMFE CALLS:", self.nntm.pmfeCalls, "SUBOPT CALLS:", self.nntm.suboptCalls)
 
     def initialize_square(self):

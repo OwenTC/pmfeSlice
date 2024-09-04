@@ -11,6 +11,7 @@ parser.add_argument("-C", type=Rational, default=50, help="Upper c bound")
 parser.add_argument("-A", type=Rational, default=50, help="Upper a bound")
 parser.add_argument("-c", type=Rational, default=-50, help="Lower c bound")
 parser.add_argument("-a", type=Rational, default=-50, help="Lower a bound")
+parser.add_argument("--basepath", type=str, default="", help="Base save path for output")
 parser.add_argument("-O", "--transform", action="store_true", help="Transform Output")
 
 args = parser.parse_args()
@@ -20,7 +21,7 @@ print(args)
 
 fan = FanSlice(args.pmfe_path, args.fasta[0], bVal = args.b_val, transform=args.transform, aB=args.A, cB=args.C, ab=args.a, cb=args.c)
 
-print(path.basename(args.fasta[0]))
+# print(path.basename(args.fasta[0]))
 
 fan.build()
-fan.save_data()
+fan.save_data(basename=args.basepath)
